@@ -41,7 +41,7 @@ from py2neo import neo4j, cypher
 app_domain = "informationsecurityanalytics.com"
 app_name = "moirai"
 webserver_directory = "."
-webserver_port = 8080
+webserver_port = 8081
 ws_host = "localhost"
 ws_port = "9000"
 neo4j_host = "localhost"
