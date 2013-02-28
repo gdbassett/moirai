@@ -41,15 +41,6 @@ moirai_port = "9000"
 # Timeout initial value (this may be a hack)
 timeout = 5
 
-# TODO: Below should be dead code and removed
-# Websocket room number
-#room = 3
-# Come up with a random name
-#name = "".join(random.choice(string.ascii_uppercase + string.digits) for x in range(10))
-
-
-# Create Graph
-#G=nx.DiGraph()
 
 #################### Handle the Moirai Web Socket ####################
 
@@ -57,6 +48,14 @@ class MyClientProtocol(WampClientProtocol):
    """
    Demonstrates simple Publish & Subscribe (PubSub) with Autobahn WebSockets.
    """
+
+   # parse WS into graph format
+   def updateGraph(self, message):
+      jsonMessage = json.loads(message)   
+      print "sending " + jsonMessage # DEBUG
+      # Send the message to moirai
+      self.publish(topicUri, jsonMessage)
+      
 
    def show(self, result):
       print "SUCCESS:", result
@@ -86,82 +85,74 @@ class MyClientProtocol(WampClientProtocol):
       # Connect to gephi which will send the graph
       # on_message will receive the graph send a msg to moirai
       print "Connecting to Gephi" # DEBUG
-      ws_gephi = websocket.WebSocketApp(gephi_address,
-                                        self.on_message = on_message,
-                                        self.on_error = on_error,
-                                        self.on_close = on_close)
-      ws_gephi.on_open = self.on_open
-
-      ws_gephi.run_forever()
-
-   #################### Handle the Gephi Graph & Web Socket ####################
+      websocket_connect(gephi_address)
 
 
-   # parse WS into graph format
-   def updateGraph(self, message):
-       jsonMessage = json.loads(message)   
-       print "sending " + jsonMessage # DEBUG
-       # Send the message to moirai
-       self.publish(topicUri, jsonMessage)
-
-   def addNode(NodeMessage):
-   #    for i in NodeMessage:
-   #        G.add_node(int(i), NodeMessage[i])
-   #        print "node %s with attributes %s added" % (i, NodeMessage[i]) # DEBUG
-       return
-   def addEdge(EdgeMessage):
-   #    for i in EdgeMessage:
-   #        source = int(EdgeMessage[i].pop("source"))
-   #        target = int(EdgeMessage[i].pop("target"))
-   #        EdgeMessage[i]["id"] = int(i)
-   #        G.add_edge(source, target, EdgeMessage[i])
-   #        print "edge %s with source %s, target %s, and attributes %s added" % (EdgeMessage[i]["id"], source, target, EdgeMessage[i]) # DEBUG
-       return
-
-   # Defines websocket message handler
-   def on_message(ws, message):
-   #    print message #DEBUG
-       global timeout
-       timeout = 3
-       updateGraph(message)
-    # Defines websocket error handler
-   def on_error(ws, error):
-       print error
-    # Defines websocket close handler
-   def on_close(ws):
-       print "### closed ###"
-    # Defines websocket open handler
-   def on_open(ws):
-       def run(*args):
-           print "Socket open, thread started."
-           global timeout
-   #        for i in range(3): #DEBUG
-   #            time.sleep(1) #DEBUG
-   #            ws.send("Hello %d" % i) #DEBUG
-           while timeout > 0:
-               timeout = timeout - 1
-               time.sleep(1)
-            # Add Edges
-              
-   #        ws.sock.settimeout(5) # sets the timeout but does nothing
-           print "thread terminating..."
-           print "Closing Socket"
-           ws.close()
-   #        print ws.sock.gettimeout() #DEBUG
-       thread.start_new_thread(run, ())
-
-   # opens a websocket to ws_url
-   def websocket_connect(ws_url):
-   #    websocket.enableTrace(True) # DEBUG
-       ws = websocket.WebSocketApp(ws_url,
-                                   on_message = on_message,
-                                   on_error = on_error,
-                                   on_close = on_close)
-       ws.on_open = on_open
-       ws.run_forever()
+#################### Handle the Gephi Graph & Web Socket ####################
 
 
-       return ws
+def addNode(NodeMessage):
+#    for i in NodeMessage:
+#        G.add_node(int(i), NodeMessage[i])
+#        print "node %s with attributes %s added" % (i, NodeMessage[i]) # DEBUG
+    return
+
+def addEdge(EdgeMessage):
+#    for i in EdgeMessage:
+#        source = int(EdgeMessage[i].pop("source"))
+#        target = int(EdgeMessage[i].pop("target"))
+#        EdgeMessage[i]["id"] = int(i)
+#        G.add_edge(source, target, EdgeMessage[i])
+#        print "edge %s with source %s, target %s, and attributes %s added" % (EdgeMessage[i]["id"], source, target, EdgeMessage[i]) # DEBUG
+    return
+
+# Defines websocket message handler
+def on_message(ws, message):
+#    print message #DEBUG
+    global timeout
+    timeout = 3
+    updateGraph(message)
+
+ # Defines websocket error handler
+def on_error(ws, error):
+    print error
+
+ # Defines websocket close handler
+def on_close(ws):
+    print "### closed ###"
+
+ # Defines websocket open handler
+def on_open(ws):
+    def run(*args):
+        print "Socket open, thread started."
+        global timeout
+#        for i in range(3): #DEBUG
+#            time.sleep(1) #DEBUG
+#            ws.send("Hello %d" % i) #DEBUG
+        while timeout > 0:
+            timeout = timeout - 1
+            time.sleep(1)
+         # Add Edges
+           
+#        ws.sock.settimeout(5) # sets the timeout but does nothing
+        print "thread terminating..."
+        print "Closing Socket"
+        ws.close()
+#        print ws.sock.gettimeout() #DEBUG
+    thread.start_new_thread(run, ())
+
+# opens a websocket to ws_url
+def websocket_connect(ws_url):
+#    websocket.enableTrace(True) # DEBUG
+    ws = websocket.WebSocketApp(ws_url,
+                                on_message = on_message,
+                                on_error = on_error,
+                                on_close = on_close)
+    ws.on_open = on_open
+    ws.run_forever()
+
+
+    return ws
 
 
 ########################  RUN MAIN ############################
@@ -175,6 +166,3 @@ if __name__ == '__main__':
     factory.protocol = MyClientProtocol
     connectWS(factory)
     reactor.run()
-
-
-
