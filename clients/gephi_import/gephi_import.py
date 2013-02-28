@@ -45,11 +45,10 @@ class MyClientProtocol(WampClientProtocol):
 
    # parse WS into graph format
    def updateGraph(self, msg):
-#      jsonMessage = json.loads(msg)   
-      print "sending " + msg # DEBUG
+      #jsonMessage = json.dumps(msg)   
+      print "sending %s to %s" % (msg, topicUri)# DEBUG
       # Send the message to moirai
-      self.publish(topicUri, msg)
-      return true
+      self.publish("appDomain:graph" + topicId, msg)
 
    def show(self, result):
       print "SUCCESS:", result
@@ -88,16 +87,20 @@ class MyClientProtocol(WampClientProtocol):
 # Defines websocket message handler
 def on_message(ws, message):
 #   print message #DEBUG
-   print "Message Received..."
+   print "Message Received... "
    global timeout
    timeout = 3
+#   convertedMsg = convert(message)
+#   jsonMsg = json.loads(message, object_hook=ascii_encode_dict)
+   jsonMsg = json.loads(message)
+   convertedMsg = convert(jsonMsg)
    try:
-      session.factory.protocol.updateGraph(message) # BUG: This calls unbound method
+      proto.publish("appDomain:graph" + topicId, convertedMsg)
       print "Success"
    except Exception as inst:
       print "Fail"
-      print type(inst)
-      print inst.args
+#      print type(inst)
+#      print inst.args
       print inst
 
  # Defines websocket error handler
@@ -142,6 +145,36 @@ def websocket_connect(ws_url):
 
     return ws
 
+# convert unicode to ascii
+# because json.loads sending out unicode and autobahn chokes on it
+#def convert(input):
+#    if isinstance(input, dict):
+#        ret = {}
+#        for stuff in input:
+#            ret = convert(stuff)
+#    elif isinstance(input, list):
+#        ret = []
+#        for i in range(len(input)):
+#            ret = convert(input[i])
+#    elif isinstance(input, str):
+#        ret = input.encode('ascii')
+#    else:
+#        ret = input
+#    return ret
+def convert(instuff):
+   if isinstance(instuff, dict):
+      return dict((convert(key), convert(value)) for key, value in instuff.iteritems())
+   elif isinstance(instuff, list):
+      return [convert(element) for element in instuff]
+   elif isinstance(input, unicode):
+      return input.encode('utf-i')
+   else:
+      return instuff
+
+#def ascii_encode_dict(data):
+#   ascii_encode = lambda x: x.encode('ascii')
+#   return dict(map(ascii_encode, pair) for pair in data.items())
+
 
 ########################  RUN MAIN ############################
 
@@ -150,8 +183,9 @@ if __name__ == '__main__':
     ##### HERES WHERE WE DO THINGS ######
     # Connect to moirai socketio websocket
     log.startLogging(sys.stdout)
-    factory = WampClientFactory("ws://" + moirai_host + ":" + moirai_port)
+    factory = WampClientFactory("ws://" + moirai_host + ":" + moirai_port, debug=True)
     factory.protocol = MyClientProtocol
+    proto = factory.protocol()
     session = connectWS(factory)
     reactor.run()
     
