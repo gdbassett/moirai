@@ -13,13 +13,8 @@
 import websocket
 import thread
 import time
-#import networkx as nx
 import json
-#import httplib
 import sys
-#import asyncore
-#import random
-#import string
 from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, DeferredList
@@ -37,7 +32,6 @@ gephi_address = "ws://localhost:8080/workspace0"
 moirai_host = "localhost"
 moirai_port = "9000"
 
-
 # Timeout initial value (this may be a hack)
 timeout = 5
 
@@ -50,12 +44,12 @@ class MyClientProtocol(WampClientProtocol):
    """
 
    # parse WS into graph format
-   def updateGraph(self, message):
-      jsonMessage = json.loads(message)   
-      print "sending " + jsonMessage # DEBUG
+   def updateGraph(self, msg):
+#      jsonMessage = json.loads(msg)   
+      print "sending " + msg # DEBUG
       # Send the message to moirai
-      self.publish(topicUri, jsonMessage)
-      
+      self.publish(topicUri, msg)
+      return true
 
    def show(self, result):
       print "SUCCESS:", result
@@ -83,7 +77,7 @@ class MyClientProtocol(WampClientProtocol):
 
 
       # Connect to gephi which will send the graph
-      # on_message will receive the graph send a msg to moirai
+      # on_message will receive the graph send an event to moirai server
       print "Connecting to Gephi" # DEBUG
       websocket_connect(gephi_address)
 
@@ -91,31 +85,24 @@ class MyClientProtocol(WampClientProtocol):
 #################### Handle the Gephi Graph & Web Socket ####################
 
 
-def addNode(NodeMessage):
-#    for i in NodeMessage:
-#        G.add_node(int(i), NodeMessage[i])
-#        print "node %s with attributes %s added" % (i, NodeMessage[i]) # DEBUG
-    return
-
-def addEdge(EdgeMessage):
-#    for i in EdgeMessage:
-#        source = int(EdgeMessage[i].pop("source"))
-#        target = int(EdgeMessage[i].pop("target"))
-#        EdgeMessage[i]["id"] = int(i)
-#        G.add_edge(source, target, EdgeMessage[i])
-#        print "edge %s with source %s, target %s, and attributes %s added" % (EdgeMessage[i]["id"], source, target, EdgeMessage[i]) # DEBUG
-    return
-
 # Defines websocket message handler
 def on_message(ws, message):
-#    print message #DEBUG
-    global timeout
-    timeout = 3
-    updateGraph(message)
+#   print message #DEBUG
+   print "Message Received..."
+   global timeout
+   timeout = 3
+   try:
+      session.factory.protocol.updateGraph(message) # BUG: This calls unbound method
+      print "Success"
+   except Exception as inst:
+      print "Fail"
+      print type(inst)
+      print inst.args
+      print inst
 
  # Defines websocket error handler
 def on_error(ws, error):
-    print error
+    print "Gephi " + error
 
  # Defines websocket close handler
 def on_close(ws):
@@ -144,6 +131,7 @@ def on_open(ws):
 # opens a websocket to ws_url
 def websocket_connect(ws_url):
 #    websocket.enableTrace(True) # DEBUG
+
     ws = websocket.WebSocketApp(ws_url,
                                 on_message = on_message,
                                 on_error = on_error,
@@ -164,5 +152,6 @@ if __name__ == '__main__':
     log.startLogging(sys.stdout)
     factory = WampClientFactory("ws://" + moirai_host + ":" + moirai_port)
     factory.protocol = MyClientProtocol
-    connectWS(factory)
+    session = connectWS(factory)
     reactor.run()
+    
