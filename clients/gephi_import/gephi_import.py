@@ -28,7 +28,9 @@ app_name = "moirai"
 topicId = "1"
 topicUri = "http://%s/%s/graph%s" % (app_domain, app_name, topicId)
 
-gephi_address = "ws://localhost:8080/workspace0"
+# gephi_host = "localhost"
+gephi_host = "ec2-54-242-250-189.compute-1.amazonaws.com"
+gephi_address = "ws://" + gephi_host + ":8080/workspace0"
 moirai_host = "localhost"
 moirai_port = "9000"
 
@@ -43,12 +45,12 @@ class MyClientProtocol(WampClientProtocol):
    Demonstrates simple Publish & Subscribe (PubSub) with Autobahn WebSockets.
    """
 
-   # parse WS into graph format
-   def updateGraph(self, msg):
-      #jsonMessage = json.dumps(msg)   
-      print "sending %s to %s" % (msg, topicUri)# DEBUG
-      # Send the message to moirai
-      self.publish("appDomain:graph" + topicId, msg)
+#   # parse WS into graph format
+#   def updateGraph(self, msg):
+#      #jsonMessage = json.dumps(msg)   
+#      print "sending %s to %s" % (msg, topicUri)# DEBUG
+#      # Send the message to moirai
+#      self.publish("appDomain:graph" + topicId, msg)
 
    def show(self, result):
       print "SUCCESS:", result
@@ -161,15 +163,24 @@ def websocket_connect(ws_url):
 #    else:
 #        ret = input
 #    return ret
-def convert(instuff):
-   if isinstance(instuff, dict):
-      return dict((convert(key), convert(value)) for key, value in instuff.iteritems())
-   elif isinstance(instuff, list):
-      return [convert(element) for element in instuff]
-   elif isinstance(input, unicode):
-      return input.encode('utf-i')
-   else:
-      return instuff
+#def convert(instuff):
+#   if isinstance(instuff, dict):
+#      return dict((convert(key), convert(value)) for key, value in instuff.iteritems())
+#   elif isinstance(instuff, list):
+#      return [convert(element) for element in instuff]
+#   elif isinstance(input, unicode):
+#      return input.encode('utf-i')
+#   else:
+#      return instuff
+def convert(input):
+    if isinstance(input, dict):
+        return {convert(key): convert(value) for key, value in input.iteritems()}
+    elif isinstance(input, list):
+        return [convert(element) for element in input]
+    elif isinstance(input, unicode):
+        return input.encode('utf-8')
+    else:
+        return input
 
 #def ascii_encode_dict(data):
 #   ascii_encode = lambda x: x.encode('ascii')
