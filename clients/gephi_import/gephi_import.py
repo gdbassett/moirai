@@ -28,8 +28,8 @@ app_name = "moirai"
 topicId = "1"
 topicUri = "http://%s/%s/graph%s" % (app_domain, app_name, topicId)
 
-# gephi_host = "localhost"
-gephi_host = "ec2-54-242-250-189.compute-1.amazonaws.com"
+gephi_host = "localhost"
+# gephi_host = "ec2-54-242-250-189.compute-1.amazonaws.com"
 gephi_address = "ws://" + gephi_host + ":8080/workspace0"
 moirai_host = "localhost"
 moirai_port = "9000"
@@ -45,12 +45,13 @@ class MyClientProtocol(WampClientProtocol):
    Demonstrates simple Publish & Subscribe (PubSub) with Autobahn WebSockets.
    """
 
-#   # parse WS into graph format
-#   def updateGraph(self, msg):
-#      #jsonMessage = json.dumps(msg)   
-#      print "sending %s to %s" % (msg, topicUri)# DEBUG
-#      # Send the message to moirai
-#      self.publish("appDomain:graph" + topicId, msg)
+   # parse WS into graph format
+   def updateGraph(self, msg):
+      #jsonMessage = json.dumps(msg)   
+      print "sending %s to %s" % (msg, topicUri)# DEBUG
+      # Send the message to moirai
+      self.factory.protocol.publish("appDomain:graph" + topicId, msg)
+
 
    def show(self, result):
       print "SUCCESS:", result
@@ -76,6 +77,8 @@ class MyClientProtocol(WampClientProtocol):
 
       print "TopicUri is %s" % topicUri
 
+      print dir(self)
+
 
       # Connect to gephi which will send the graph
       # on_message will receive the graph send an event to moirai server
@@ -97,7 +100,12 @@ def on_message(ws, message):
    jsonMsg = json.loads(message)
    convertedMsg = convert(jsonMsg)
    try:
-      proto.publish("appDomain:graph" + topicId, convertedMsg)
+      # BUG: Below line causes error on line 1387 of wamp.py
+      # line is: o = self.factory._serialize(msg)
+      # error is: MyClientProtocol instance has no attribute factory
+#      proto.publish("appDomain:graph" + topicId, convertedMsg)
+#      proto.updateGraph(message)
+      factory.protocol.publish("appDomain:graph" + topicId, message)
       print "Success"
    except Exception as inst:
       print "Fail"
@@ -196,6 +204,7 @@ if __name__ == '__main__':
     log.startLogging(sys.stdout)
     factory = WampClientFactory("ws://" + moirai_host + ":" + moirai_port, debug=True)
     factory.protocol = MyClientProtocol
+#    f = factory() #BUG Factory has no method __call__
     proto = factory.protocol()
     session = connectWS(factory)
     reactor.run()
