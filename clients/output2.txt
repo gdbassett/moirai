@@ -1,0 +1,11 @@
+2013-03-01 02:28:59+0000 [-] Log opened.
+2013-03-01 02:28:59+0000 [-] Starting factory <autobahn.wamp.WampClientFactory instance at 0x1ebc830>
+2013-03-01 02:28:59+0000 [MyClientProtocol,client] Session Opened
+2013-03-01 02:28:59+0000 [MyClientProtocol,client] Subscribing to appDomain:graph1
+2013-03-01 02:28:59+0000 [MyClientProtocol,client] [7, 'appDomain:graph1', {'an': {'C': {'Metadata': {'DOMAIN': 'fark.com'}, 'Class': 'Attribute', 'label': 'DOMAIN'}}}, None]
+2013-03-01 02:28:59+0000 [MyClientProtocol,client] [7, 'appDomain:graph1', {'an': {'C': {'Metadata': {'DOMAIN': 'fark.com'}, 'bool': True, 'Class': 'Attribute', 'label': 'DOMAIN'}}}, None]
+2013-03-01 02:28:59+0000 [MyClientProtocol,client] [7, 'appDomain:graph1', {'an': {'C': {'size': 0.5, 'Metadata': {'DOMAIN': 'fark.com'}, 'Class': 'Attribute', 'label': 'DOMAIN'}}}, None]
+2013-03-01 02:28:59+0000 [MyClientProtocol,client] [7, 'appDomain:graph1', {'an': {'21': {'Label': 'Sends phishing email asking for info to be mailed back or entered into website.', 'CPT': '{"nodeId":21,"index":["18",true,false],"1":[1,"1","0"],"0":[0,"0","1"]}', 'size': 42.4, 'b': 0.6901961, 'g': 0.7882353, 'Degree': 4, 'r': 0.4745098, 'y': -350.97687, 'x': 307.24896, 'z': 0, 'Class': 'Event'}}}, None]
+2013-03-01 02:28:59+0000 [MyClientProtocol,client] Stopping factory <autobahn.wamp.WampClientFactory instance at 0x1ebc830>
+2013-03-01 02:29:05+0000 [-] Received SIGINT, shutting down.
+2013-03-01 02:29:05+0000 [-] Main loop terminated.

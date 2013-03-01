@@ -33,6 +33,9 @@ topicId = "1"
 ws_host = "localhost"
 ws_port = "9000"
 
+testDict = {'an': {'21': {'b': 0.6901961, 'g': 0.7882353, 'Degree': 4, 'Label': 'Sends phishing email asking for info to be mailed back or entered into website.', 'r': 0.4745098, 'y': -350.97687, 'x': 307.24896, 'z': 0, 'CPT': '{"nodeId":21,"index":["18",true,false],"1":[1,"1","0"],"0":[0,"0","1"]}', 'Class': 'Event', 'size': 42.4}}}
+
+
 
 class MyClientProtocol(WampClientProtocol):
    """
@@ -68,6 +71,7 @@ class MyClientProtocol(WampClientProtocol):
       self.publish(GraphAddr, {"an":{"C":{"label":"DOMAIN","Class":"Attribute","Metadata":{"DOMAIN":"fark.com"}}}})
       self.publish(GraphAddr, {"an":{"C":{"label":"DOMAIN","Class":"Attribute","Metadata":{"DOMAIN":"fark.com"}, "bool": True}}})
       self.publish(GraphAddr, {"an":{"C":{"label":"DOMAIN","Class":"Attribute","Metadata":{"DOMAIN":"fark.com"}, "size":0.5}}})
+      self.publish(GraphAddr, testDict)
 #      self.publish("event:foobar1", {"count": 666})
 #      self.publish("event:foobar2", {"count": 67})
 #      self.publish("event:foobar-extended", {"name": "foo", "value": "bar", "num": 42})
