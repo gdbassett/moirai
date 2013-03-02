@@ -36,8 +36,7 @@ import moirai
 # Import py2neo to support the cypher RPC & to pass the graph to the moirai module
 from py2neo import neo4j, cypher
 
-# TODO: Move a ton of the stuff to variables up here or to a config file
-#         can override variable @ the command line later.
+# TODO: provide config file or command line for variables
 app_domain = "informationsecurityanalytics.com"
 app_name = "moirai"
 webserver_directory = "."
@@ -56,12 +55,11 @@ class MyTopicService:
 
    def __init__(self, allowedTopicIds):
       self.allowedTopicIds = allowedTopicIds
-      self.serial = 0 # TODO Remove this
       print "Allowed topics are %s" % allowedTopicIds # debug
 
 
    # returns true or false  if we're going to let the client subscribe to
-   #   the topic prefix (foobar) and suffix (a number)
+   #   the topic prefix (graph) and suffix (a number)
    @exportSub("graph", True)
    def subscribe(self, topicUriPrefix, topicUriSuffix):
       """
@@ -81,23 +79,18 @@ class MyTopicService:
          return False
 
 
-   @exportPub("graph", True) #TODO: Replace Foobar w/ something more correct
+   @exportPub("graph", True)
    def publish(self, topicUriPrefix, topicUriSuffix, event):
       """
       Custom topic publication handler.
       """
       print "client wants to publish to %s%s" % (topicUriPrefix, topicUriSuffix)
-      print "event dir is %s" % event # DEBUG
+#      print "event dir is %s" % event # DEBUG
       try:
-#      if 1:  # DEBUG
          i = int(topicUriSuffix)
-         #TODO: Add check on topicUriSuffix in allowedTopicIds
-         #TODO: If event includes a DCES event, run the appropriate Moirai Handler
-
          # check that the topic is allowed (only using '1' right now)
          if i in self.allowedTopicIds:
-            # check the DCES type
-            if type(event) == dict:
+            if type(event) == dict AND DCES_VERSION in event: # could also check DCES version here
                updatedEvent = {} # empty dictionary for the updated Event
                if "ae" in event: # handle add edge
                   IDs = moirai.ae_handler(graph_db,event["ae"])
@@ -107,8 +100,6 @@ class MyTopicService:
                      updatedEvent["ae"][IDs[originID]] = event["ae"][originID]
                      # Add the origin ID to the DCES record just for reference
                      updatedEvent["ae"][IDs[originID]]["originID"] = originID
-                  # TODO: resend node to all clients
-#                  socket.send_and_broadcast_channel({"action":"message", "message":json.dumps(IDs)})
                if "an" in event: # handle add node
                   print "Adding Node" #debug
                   # Add the node to the neo4j database
@@ -119,8 +110,6 @@ class MyTopicService:
                      updatedEvent["an"][IDs[originID]] = event["an"][originID]
                      # Add the origin ID to the DCES record just for reference
                      updatedEvent["an"][IDs[originID]]["originID"] = originID
-                  print "Sending IDs back" #debug
-#                  socket.send_and_broadcast_channel({"action":"message", "message":json.dumps(IDs)}) # send back the ID Mapping
                if "ce" in event: # handle change edge
                   moirai.ce_handler(graph_db,event["ce"])
                   # Add the ce DCES records to the updated event
@@ -145,39 +134,39 @@ class MyTopicService:
                   moirai.rn_handler(graph_db,event["rn"])
                   # Add the rn DCES records to the updated event
                   updatedEvent["rn"] = event["rn"]
-
-               """
-               #TODO: Rewrite cypher as as a RDP call
-               elif message["action"] == "cypher":
-                  print(message) #debug
-                  # Build a Cypher query
-                  query = message["message"]["query"] #"START a=node({A}) MATCH a-[:KNOWS]->b RETURN a,b"
-                  params = message["message"]["params"]
-                  node_list, metadata = cypher.execute(graph_db, query, params) # TODO: row handler needs to be changed
-
-                  results = []
-                  results.append(metadata.columns)
-                  for i in node_list:
-                     row = []
-                     for j in i:
-                        if isinstance(j, neo4j.Node) or isinstance(j, neo4j.Relationship):
-                           row.append({j.id:j.get_properties()})
-                        else:
-                           row.append(j)
-                     results.append(row)
-   #               socket.send_and_broadcast_channel({"action":"message", "message":json.dumps(results)}) # send the query
-               """
-               
                print "ok, publishing updated event %s" % updatedEvent
                return updatedEvent
             else:
-               print "event is not dict or misses DCES Event"
+               print "event is not dict or misses DCES Version"
                return None
          else:
             print "Topic %s not in allowed topics." % i
       except:
          print "illegal topic - skipped publication of event"
          return None
+
+# Method to receive a cypher query and params
+# Return a list of results
+# TODO: Make params an optional value
+getCypher(query, params):
+"""
+   resp_list, metadata = cypher.execute(graph_db, query, params) # TODO: row handler needs to be changed
+   # Format the output into something serializable
+   results = []
+   results.append(metadata.columns)
+   for i in resp_list:
+      row = []
+      for j in i:
+         if isinstance(j, neo4j.Node) or isinstance(j, neo4j.Relationship):
+            row.append({j.id:j.get_properties()})
+         else:
+            row.append(j)
+      results.append(row)
+   return results
+"""
+               
+
+
 
 # This is the actual app
 class PubSubServer1(WampServerProtocol):
@@ -188,16 +177,13 @@ class PubSubServer1(WampServerProtocol):
       ## register a single, fixed URI as PubSub topic
       self.registerForPubSub("http://" + app_domain + "/" + app_name)
  
-      # This says run this app when the below link is requested on the WS
-      ## register a URI and all URIs having the string as prefix as PubSub topic
-#      self.registerForPubSub("http://example.com/event#", True) # infosecanalytics for domain & moirai for app
-
       # This picks a few topics within the app and says what to do with them
       ## register a topic handler to control topic subscriptions/publications
       self.topicservice = MyTopicService(topicIds)
       self.registerHandlerForPubSub(self.topicservice, "http://%s/%s/" % (app_domain, app_name))
 
- 
+      # Register an RPC to handle Cypher requests
+      self.registerProcedureForRpc("http://%s/%s/#cypher" % (app_domain, app_name), getCypher)
  
 if __name__ == '__main__':
  
