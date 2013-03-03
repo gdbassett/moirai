@@ -29,7 +29,8 @@ from autobahn.websocket import listenWS
 from autobahn.wamp import WampServerFactory, \
                           WampServerProtocol, \
                           exportPub, \
-                          exportSub
+                          exportSub, \
+                          exportRpc
 
 import moirai
 
