@@ -147,10 +147,14 @@ class MyTopicService:
          return None
 
 
+   # TODO: Make "params" optional
+   # TODO: check topic list before executing
    @exportRpc
    def cypher(self, query, params):
+      print "Executing query " + query # DEBUG
       resp_list, metadata = cypher.execute(graph_db, query, params) # TODO: row handler needs to be changed
       # Format the output into something serializable
+      print "Results Received from query.  Formatting now." # DEBUG
       results = []
       results.append(metadata.columns)
       for i in resp_list:
@@ -161,32 +165,9 @@ class MyTopicService:
             else:
                row.append(j)
          results.append(row)
+      print "Returning Results." # DEBUG
       return results
-
-      
-
-# Method to receive a cypher query and params
-# Return a list of results
-# TODO: Make params an optional value
-"""
-getCypher(query, params):
-
-   resp_list, metadata = cypher.execute(graph_db, query, params) # TODO: row handler needs to be changed
-   # Format the output into something serializable
-   results = []
-   results.append(metadata.columns)
-   for i in resp_list:
-      row = []
-      for j in i:
-         if isinstance(j, neo4j.Node) or isinstance(j, neo4j.Relationship):
-            row.append({j.id:j.get_properties()})
-         else:
-            row.append(j)
-      results.append(row)
-   return results
-"""
                
-
 
 
 # This is the actual app

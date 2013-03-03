@@ -1,6 +1,6 @@
 ###############################################################################
 ##
-##  Copyright 2011,2012 Tavendo GmbH
+##  Copyright 2011 Tavendo GmbH
 ##
 ##  Licensed under the Apache License, Version 2.0 (the "License");
 ##  you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 ##
 ###############################################################################
 
-import sys
 
+# IMPORTS
+import sys
 from twisted.python import log
 from twisted.internet import reactor
-
+from twisted.internet.defer import Deferred, DeferredList
 from autobahn.websocket import connectWS
-from autobahn.wamp import WampClientFactory, \
-                          WampClientProtocol
+from autobahn.wamp import WampClientFactory, WampClientProtocol
 
 
 # STATIC VARIABLES
@@ -35,30 +35,41 @@ ws_port = "9000"
 
 
 
-class PubSubClient1(WampClientProtocol):
+class SimpleClientProtocol(WampClientProtocol):
+   """
+   Demonstrates simple Remote Procedure Calls (RPC) with
+   AutobahnPython and Twisted Deferreds.
+   """
+
+   def show(self, result):
+      print "SUCCESS:", result
+
+   def logerror(self, e):
+      erroruri, errodesc, errordetails = e.value.args
+      print "ERROR: %s ('%s') - %s" % (erroruri, errodesc, errordetails)
+
+   def done(self, *args):
+      self.sendClose()
+      reactor.stop()
 
    def onSessionOpen(self):
+
       # Set the App Prefix
       self.prefix("moirai", "http://%s/%s#" % (app_domain, app_name))
+      # Set our static query for testing purposes
+      query = "START n = node(*) RETURN *;"
+      params = {}
 
-      # Suscribe to the pubsub
-      self.subscribe("moirai:graph1", self.onApp)
+      # Execute the RPC
+      self.call("moirai:cypher", query, params).addCallback(self.show)
 
-   def onSimpleEvent(self, topicUri, event):
-      print "Event", topicUri, event
 
-   def onApp(self, topicUri, event):
-      print app_name, topicUri, event
-
+############## STUFF HAPPENS HERE  #############
 
 if __name__ == '__main__':
 
    log.startLogging(sys.stdout)
-   debug = len(sys.argv) > 1 and sys.argv[1] == 'debug'
-
-   factory = WampClientFactory("ws://%s:%s" % (ws_host, ws_port), debugWamp = debug)
-   factory.protocol = PubSubClient1
-
+   factory = WampClientFactory("ws://%s:%s" % (ws_host, ws_port), debugWamp = True)
+   factory.protocol = SimpleClientProtocol
    connectWS(factory)
-
    reactor.run()
