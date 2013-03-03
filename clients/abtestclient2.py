@@ -58,13 +58,13 @@ class MyClientProtocol(WampClientProtocol):
    def onSessionOpen(self):
       print "Session Opened"
 
-      # Prefix the domain
-      self.prefix("appDomain", "http://%s/%s/" % (app_domain, app_name)) 
+      # Set the App Prefix
+      self.prefix("moirai", "http://%s/%s#" % (app_domain, app_name))
 
       # shortname for the domain + app name + topic
-      GraphAddr = "appDomain:graph" + topicId
+      GraphAddr = "moirai:graph1"
 
-      print "Subscribing to %s" % GraphAddr
+      print "Subscribing to " + GraphAddr
       self.subscribe(GraphAddr, self.onApp)
 
       # lets try and publish something
@@ -72,11 +72,8 @@ class MyClientProtocol(WampClientProtocol):
       self.publish(GraphAddr, {"an":{"C":{"label":"DOMAIN","Class":"Attribute","Metadata":{"DOMAIN":"fark.com"}, "bool": True}}})
       self.publish(GraphAddr, {"an":{"C":{"label":"DOMAIN","Class":"Attribute","Metadata":{"DOMAIN":"fark.com"}, "size":0.5}}})
       self.publish(GraphAddr, testDict)
-#      self.publish("event:foobar1", {"count": 666})
-#      self.publish("event:foobar2", {"count": 67})
-#      self.publish("event:foobar-extended", {"name": "foo", "value": "bar", "num": 42})
-#      self.publish("event:foobar-limited", {"name": "foo", "value": "bar", "num": 23})
 
+      # quit after publishing
       self.done()
 
 
