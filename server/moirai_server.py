@@ -90,7 +90,7 @@ class MyTopicService:
          i = int(topicUriSuffix)
          # check that the topic is allowed (only using '1' right now)
          if i in self.allowedTopicIds:
-            if type(event) == dict AND DCES_VERSION in event: # could also check DCES version here
+            if type(event) == dict and DCES_VERSION in event: # could also check DCES version here
                updatedEvent = {} # empty dictionary for the updated Event
                if "ae" in event: # handle add edge
                   IDs = moirai.ae_handler(graph_db,event["ae"])
@@ -145,11 +145,31 @@ class MyTopicService:
          print "illegal topic - skipped publication of event"
          return None
 
+
+   @exportRpc
+   def cypher(self, query, params):
+      resp_list, metadata = cypher.execute(graph_db, query, params) # TODO: row handler needs to be changed
+      # Format the output into something serializable
+      results = []
+      results.append(metadata.columns)
+      for i in resp_list:
+         row = []
+         for j in i:
+            if isinstance(j, neo4j.Node) or isinstance(j, neo4j.Relationship):
+               row.append({j.id:j.get_properties()})
+            else:
+               row.append(j)
+         results.append(row)
+      return results
+
+      
+
 # Method to receive a cypher query and params
 # Return a list of results
 # TODO: Make params an optional value
-getCypher(query, params):
 """
+getCypher(query, params):
+
    resp_list, metadata = cypher.execute(graph_db, query, params) # TODO: row handler needs to be changed
    # Format the output into something serializable
    results = []
@@ -180,10 +200,12 @@ class PubSubServer1(WampServerProtocol):
       # This picks a few topics within the app and says what to do with them
       ## register a topic handler to control topic subscriptions/publications
       self.topicservice = MyTopicService(topicIds)
-      self.registerHandlerForPubSub(self.topicservice, "http://%s/%s/" % (app_domain, app_name))
+      self.registerHandlerForPubSub(self.topicservice, "http://%s/%s#" % (app_domain, app_name))
 
       # Register an RPC to handle Cypher requests
-      self.registerProcedureForRpc("http://%s/%s/#cypher" % (app_domain, app_name), getCypher)
+      self.registerForRpc(self.topicservice, "http://%s/%s#" % (app_domain, app_name))
+
+      
  
 if __name__ == '__main__':
  
