@@ -91,7 +91,9 @@ class MyTopicService:
          i = int(topicUriSuffix)
          # check that the topic is allowed (only using '1' right now)
          if i in self.allowedTopicIds:
-            if type(event) == dict and DCES_VERSION in event: # could also check DCES version here
+            # Add 'and "DCES_VERSION" in event' to below to check that message
+            #   is actually a DCES message, (in case other graph messase are used)
+            if type(event) == dict:
                updatedEvent = {} # empty dictionary for the updated Event
                if "ae" in event: # handle add edge
                   IDs = moirai.ae_handler(graph_db,event["ae"])
@@ -182,10 +184,10 @@ class PubSubServer1(WampServerProtocol):
       # This picks a few topics within the app and says what to do with them
       ## register a topic handler to control topic subscriptions/publications
       self.topicservice = MyTopicService(topicIds)
-      self.registerHandlerForPubSub(self.topicservice, "http://%s/%s#" % (app_domain, app_name))
+      self.registerHandlerForPubSub(self.topicservice, "http://%s/%s/" % (app_domain, app_name))
 
       # Register an RPC to handle Cypher requests
-      self.registerForRpc(self.topicservice, "http://%s/%s#" % (app_domain, app_name))
+      self.registerForRpc(self.topicservice, "http://%s/%s/" % (app_domain, app_name))
 
       
  

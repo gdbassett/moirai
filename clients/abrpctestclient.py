@@ -15,7 +15,7 @@
 ##  limitations under the License.
 ##
 ###############################################################################
-
+## Edited by Gabriel bassett 3/13
 
 # IMPORTS
 import sys
@@ -55,7 +55,7 @@ class SimpleClientProtocol(WampClientProtocol):
    def onSessionOpen(self):
 
       # Set the App Prefix
-      self.prefix("moirai", "http://%s/%s#" % (app_domain, app_name))
+      self.prefix("moirai", "http://%s/%s/" % (app_domain, app_name))
       # Set our static query for testing purposes
       query = "START n = node(*) RETURN *;"
       params = {}
