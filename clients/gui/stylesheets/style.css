@@ -1,0 +1,126 @@
+td, th {
+    border: 1px solid black;
+    margin: 5px;
+    border-radius: 3px;
+    
+}
+
+td.label {
+    width: 40%;
+    overflow: inherit;
+}
+
+#title {
+    text-decoration: bold;
+    float: left;
+    color: white;
+    margin-left: 3px;
+    font-size: 30px;
+    margin-top: 15px;
+}
+
+/* Format the CPT input form */
+.cpt-form {
+    width: 30px;
+    height: 25px;
+    text-align: center;
+    margin: auto;
+}
+
+/* Format the CPT input form buttons */
+div div div input.cpt-form {
+    width: 50%;
+    height 25px;
+    
+}
+
+#myCanvas {
+    width: 98%;
+    height: 400px;
+    background-color: #cda977;
+    margin: auto;
+    margin-bottom: 5px;
+}
+
+/* CPT value reference Table */
+#header table {
+    background-color: white;
+    border-radius: 5px;
+    height: 50px;
+    margin: 3px;
+    float: right;
+}
+
+#copyright {
+    float: right;
+}
+
+#body {
+    background-color: #e6d4bb;
+    width: 98%;
+    border-radius: 10px;
+}
+
+#header {
+    background-color: #692f01;
+    z-index: 1;
+    position: fixed;
+    width: 96%;
+    border-radius: 5px;
+    height: 60px;
+    margin-bottom: 10px;
+    margin-left: 5px;
+    margin-right: 5px;
+    margin-top: 5px;
+}
+
+
+
+.left {
+    position: relative;
+    float: left;
+    width: 65%;
+    background-color: #cda977;
+    border-radius: 5px;
+    margin-top: 75px;
+    margin-bottom: 10px;
+    margin-left: 5px;
+}
+
+.right {
+    position: relative;
+    float: right;
+    width: 33%;
+    border-radius: 5px;
+    margin-top: 75px;
+    background-color: #cda977;
+    margin-bottom: 10px;
+    margin-right: 5px;
+}
+
+#footer {
+    position: relative;
+    clear: both;
+    background-color: #a35e27;
+    border-radius: 5px;
+    margin: 5px;
+}
+
+.color1 { color: #cda977} /* light brown */
+.color2 { color: #ffffff}
+.color3 { color: #d1a976}
+.color4 { color: #faf7e8}
+.color5 { color: #f9f1dc}
+.color6 { color: #fffeff}
+.color7 { color: #a35e27} /* medium brown */
+.color8 { color: #fefefc}
+.color9 { color: #692f01} /* dark brown */
+.color10 { color: #f1f2ed}
+.color11 { color: #fffffd}
+.color12 { color: #fcf9f2}
+.color13 { color: #fefefe}
+.color14 { color: #fcecd3}
+.color15 { color: #f9f5e9}
+.color16 { color: #fbf8f1}
+.color17 { color: #f8f0db}
+.color18 { color: #e6d4bb} /* faded background brown */
