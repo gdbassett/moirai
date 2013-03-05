@@ -20,32 +20,37 @@
 ### Imports ###
 
 
-import sys, getopt
+import sys, getopt, ConfigParser
 from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, DeferredList
 from autobahn.websocket import connectWS
 from autobahn.wamp import WampClientFactory, WampClientProtocol
-import ConfigParser
 
 
 ###  Static Variables ###
 
 config_file = "moirai.cfg"
 
+helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -t <topicId> : The graph topic to subscribe to.\r\n  -d <app domain> : The app domain to connect to.\r\n  -a <app name> : The name of the app to connect to.\r\n  -s <server host> : The websocket server host.\r\n  -p <server port> : The websocket server port.'
+
 # Subscribe Variables
-app_domain = "informationsecurityanalytics.com"
-app_name = "moirai"
-topicId = "1"
+#app_domain = "informationsecurityanalytics.com"
+#app_name = "moirai"
+#topicId = "1"
 
 # Server Variables
-ws_host = "localhost"
-ws_port = "9000"
+#ws_host = "localhost"
+#ws_port = "9000"
 
 # Test Data
 testDict = {'an': {'21': {'b': 0.6901961, 'g': 0.7882353, 'Degree': 4, 'Label': 'Sends phishing email asking for info to be mailed back or entered into website.', 'r': 0.4745098, 'y': -350.97687, 'x': 307.24896, 'z': 0, 'CPT': '{"nodeId":21,"index":["18",true,false],"1":[1,"1","0"],"0":[0,"0","1"]}', 'Class': 'Event', 'size': 42.4}}}
 query = "START n = node(*) RETURN *;"
 params = {}
+
+
+### SET ENVIRONMENT ###
+
 
 # Read Config File
 config = ConfigParser.ConfigParser()
@@ -60,17 +65,11 @@ app_name = config.get("Subscribe", "app_name")
 try:
    opts, args = getopt.getopt(sys.argv[1:],"ht:d:a:h:p:")
 except getopt.GetoptError:
-   print 'abclienttemplate.py -h -t <topicId> -d <app domain> -a <app name> -h <server Host> -p <server port>'
+   print helpMsg
    sys.exit(2)
 for opt, arg in opts:
    if opt == '-h':
-      print 'abclienttemplate.py [options]'
-      print '-h : This message'
-      print '-t <topicId> : The graph topic to subscribe to.'
-      print '-d <app domain> : The app domain to connect to.'
-      print '-a <app name> : The name of the app to connect to.'
-      print '-h <server host> : The websocket server host.'
-      print '-p <server port> : The websocket server port.'
+      print helpMsg
       sys.exit()
    elif opt in ("-t"):
       topicId = arg
@@ -78,13 +77,14 @@ for opt, arg in opts:
       app_domain = arg
    elif opt in ("-a"):
       app_name = arg
-   elif opt in ("-h"):
+   elif opt in ("-s"):
       ws_host = arg
    elif opt in ("-p"):
       ws_port = arg
 
 
 ### Class & Method Definitions ###
+
 
 class MyClientProtocol(WampClientProtocol):
 

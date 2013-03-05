@@ -18,8 +18,11 @@
 ##  Code Updated by Gabriel Bassett 2-27
 
 
-import sys
- 
+### INCLUDES ###
+
+
+import sys, getopt, ConfigParser
+
 from twisted.python import log
 from twisted.internet import reactor
 from twisted.web.server import Site
@@ -32,24 +35,78 @@ from autobahn.wamp import WampServerFactory, \
                           exportSub, \
                           exportRpc
 
+# Custom code to handle dealing with the graph and the neo4j DB it's stored in
 import moirai
 
 # Import py2neo to support the cypher RPC & to pass the graph to the moirai module
 from py2neo import neo4j, cypher
 
-# TODO: provide config file or command line for variables
-app_domain = "informationsecurityanalytics.com"
-app_name = "moirai"
-webserver_directory = "."
-webserver_port = 8081
-ws_host = "localhost"
-ws_port = "9000"
-neo4j_host = "localhost"
-neo4j_port = "7474"
-topicIds = [1]
+
+### STATIC VARIABLES ###
+
+
+config_file = "moirai_server.cfg"
+helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -w : Enable the moirai webserver (defaults to disabled).\r\n  -t <topicId> : The graph topic to subscribe to.\r\n  -s <server host> : The websocket server host.\r\n  -p <server port> : The websocket server port.\r\n  -n <neo4j host> : The neo4j server host.\r\n  -o <neo4j port> : The neo4j server port.'
+
+#app_domain = "informationsecurityanalytics.com"
+#app_name = "moirai"
+#webserver_directory = "."
+#webserver_port = 8081
+#ws_host = "localhost"
+#ws_port = "9000"
+#neo4j_host = "localhost"
+#neo4j_port = "7474"
+#topicIds = [1]
+#run_webserver = False
+
+
+### Set Environment ###
+
+
+# Read Config File
+config = ConfigParser.ConfigParser()
+config.read(config_file)
+topicIds = config.get("Subscribe", "topicIds")  
+ws_host = config.get("Server", "ws_host")
+ws_port = config.get("Server", "ws_port")
+app_domain = config.get("Subscribe", "app_domain")
+app_name = config.get("Subscribe", "app_name")
+neo4j_host = config.get("Neo4j", "neo4j_host")
+neo4j_port = config.get("Neo4j", "neo4j_port")
+webserver_directory = config.get("Webserver", "http_directory")
+webserver_port = config.getint("Webserver", "http_port")
+run_webserver = config.get("Webserver", "enabled")
+
+# Read Command Line Arguements
+try:
+   opts, args = getopt.getopt(sys.argv[1:],"hwt:h:p:n:o:")
+except getopt.GetoptError:
+   print helpInfo
+   sys.exit(2)
+for opt, arg in opts:
+   if opt == '-h':
+      print helpInfo
+      sys.exit()
+   elif opt in ("-w"):
+      run_webserver = True
+   elif opt in ("-t"):
+      topicId = arg
+   elif opt in ("-s"):
+      ws_host = arg
+   elif opt in ("-p"):
+      ws_port = arg
+   elif opt in ("-n"):
+      neo4j_host = arg
+   elif opt in ("-o"):
+      neo4j_port = arg
+
 
 # Establish the connection to the neo4j database
 graph_db = neo4j.GraphDatabaseService("http://" + neo4j_host + ":" + neo4j_port + "/db/data/")
+
+
+
+### CLASS AND METHOD DEFINITIONS #### 
  
 # This handles the subscriptions and publications for the app
 class MyTopicService:
@@ -189,7 +246,10 @@ class PubSubServer1(WampServerProtocol):
       # Register an RPC to handle Cypher requests
       self.registerForRpc(self.topicservice, "http://%s/%s/" % (app_domain, app_name))
 
-      
+ 
+### MAIN CODE EXECUTION ### 
+ 
+ 
  
 if __name__ == '__main__':
  
