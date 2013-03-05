@@ -201,8 +201,9 @@ class MyTopicService:
                return None
          else:
             print "Topic %s not in allowed topics." % i
-      except:
+      except Exception as ex:
          print "illegal topic - skipped publication of event"
+         print ex
          return None
 
 
