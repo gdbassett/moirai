@@ -13,7 +13,7 @@
 // TODO: Make it pretty
 //       1. Divide up the page into regions (head, left(table), right(canvas), foot)
 //       2. Add some color, styling to the regions of the page
-
+// TODO: Convert to coffeescript
 
 //Variables
 var socket = null;
@@ -25,6 +25,11 @@ var logBox = null;
 //var edges = [];
 //create the empty graph object
 var g = {};
+// WAMP session object
+var sess = null;
+// App names to prefix
+var app_domain = "informationsecurityanalytics.com"
+var app_name = "moirai"
 
 
 //jQuery initialization function
@@ -98,7 +103,7 @@ $(document).ready(function() {
     
 });
 
-
+// TODO: Replacing with autobahn-based WAMP websocket connection
 // Opens web socket
 // accepts events on websocket
 // closes websocket
@@ -160,6 +165,55 @@ function connect() {
 
   addToLog('Connect ' + addressBox.value);
 }
+// END CONNECT
+
+function connect2() {
+  ab.connect(wsuri,
+
+    // WAMP session was established
+    function (session) {
+
+      sess = session;
+
+      console.log("Connected to " + wsuri);
+      // Now that the WAMP session is connected, do something:
+      getGraph();
+    },
+
+    // WAMP session is gone
+    function (code, reason) {
+
+      sess = null;
+
+      if (code == ab.CONNECTION_UNSUPPORTED) {
+        window.location = "http://autobahn.ws/unsupportedbrowser";
+      } else {
+        alert(reason);
+      }
+    }
+  );
+}
+//TODO: Update this to populate the table or an intermediary graph object
+// TAKES: nothing
+// DOES: queries the session defined in "sess" for the graph
+// DOES: populates the graph table w/ nodes or the whole graph somewhere
+// RETURNS: nothing
+getGraph() {
+  var query1 = "START n = node(*) RETURN n;";
+  var query2 = "START n = node(*) MATCH n-[r]->m RETURN r, ID(n), ID(m);";
+  var params = {};
+
+
+  //Prefix the connection
+  sess.prefix("moirai", "http://" + app_domain + "/" + app_name + "/");
+
+  //Make call to get graph nodes. Currently just logs them.
+  sess.call("moirai:cypher", query1, params).then(addToLog);
+  //Make call to get graph edges.  Currently just logs them.
+  sess.call("moirai:cypher", query2, params).then(addToLog);
+
+}
+
 
 
 // Logs ws information to a text box
