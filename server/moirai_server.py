@@ -21,7 +21,7 @@
 ### INCLUDES ###
 
 
-import sys, getopt, ConfigParser
+import sys, getopt, ConfigParser, json
 
 from twisted.python import log
 from twisted.internet import reactor
@@ -46,7 +46,7 @@ from py2neo import neo4j, cypher
 
 
 config_file = "moirai_server.cfg"
-helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -w : Enable the moirai webserver (defaults to disabled).\r\n  -t <topicId> : The graph topic to subscribe to.\r\n  -s <server host> : The websocket server host.\r\n  -p <server port> : The websocket server port.\r\n  -n <neo4j host> : The neo4j server host.\r\n  -o <neo4j port> : The neo4j server port.'
+helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -w : Enable the moirai webserver (defaults to disabled).\r\n  -t <topicId> : The graph topic to subscribe to.\r\n  -s <server host> : The websocket server host.\r\n  -p <server port> : The websocket server port.\r\n  -n <neo4j host> : The neo4j server host.\r\n  -o <neo4j port> : The neo4j server port.\r\n  --http-dir=<webserver directory> : directory to serve files from.\r\n  --http-port=<webserver port> : Port to run webserver on.'
 
 #app_domain = "informationsecurityanalytics.com"
 #app_name = "moirai"
@@ -66,7 +66,7 @@ helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -w : Enable
 # Read Config File
 config = ConfigParser.ConfigParser()
 config.read(config_file)
-topicIds = config.get("Subscribe", "topicIds")  
+topicIds = json.loads(config.get("Subscribe", "topicIds"))  
 ws_host = config.get("Server", "ws_host")
 ws_port = config.get("Server", "ws_port")
 app_domain = config.get("Subscribe", "app_domain")
@@ -79,18 +79,18 @@ run_webserver = config.get("Webserver", "enabled")
 
 # Read Command Line Arguements
 try:
-   opts, args = getopt.getopt(sys.argv[1:],"hwt:h:p:n:o:")
+   opts, args = getopt.getopt(sys.argv[1:],"hwt:h:p:n:o:", ["http-dir=", "http-port="])
 except getopt.GetoptError:
-   print helpInfo
+   print helpMsg
    sys.exit(2)
 for opt, arg in opts:
    if opt == '-h':
-      print helpInfo
+      print helpMsg
       sys.exit()
    elif opt in ("-w"):
       run_webserver = True
    elif opt in ("-t"):
-      topicId = arg
+      topicIds = json.loads(arg)
    elif opt in ("-s"):
       ws_host = arg
    elif opt in ("-p"):
@@ -99,7 +99,10 @@ for opt, arg in opts:
       neo4j_host = arg
    elif opt in ("-o"):
       neo4j_port = arg
-
+   elif opt in ("--http-dir"):
+      webserver_directory = arg
+   elif opt in ("--http-port"):
+      webserver_port = int(arg)
 
 # Establish the connection to the neo4j database
 graph_db = neo4j.GraphDatabaseService("http://" + neo4j_host + ":" + neo4j_port + "/db/data/")
@@ -269,9 +272,10 @@ if __name__ == '__main__':
    factory.protocol = PubSubServer1
    factory.setProtocolOptions(allowHixie76 = True)
    listenWS(factory)
- 
-   webdir = File(webserver_directory)
-   web = Site(webdir)
-   reactor.listenTCP(webserver_port, web)
+
+   if run_webserver == True: 
+      webdir = File(webserver_directory)
+      web = Site(webdir)
+      reactor.listenTCP(webserver_port, web)
  
    reactor.run()
