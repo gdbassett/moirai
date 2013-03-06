@@ -1,0 +1,16 @@
+Graph items:
+Items exchanged through the graph app should use the DCES format.  It can be found at http://infosecanalytics.blogspot.com/2013/02/it-has-come-time-to-provide-standard.html
+
+Cypher Results:
+Cypher results will return a list.  The first time of the list will be the column headers of the data returned by the cypher query.  The remaining items in the list are the results.  Each result is a list of the actual fields requested returned by the cypher.
+Example:
+query:  "START n = node(*) MATCH n-[r]->m RETURN r, ID(n), ID(m);"
+results: [["r", "ID(n)", "ID(m)"], [{1:{"weight":1, "color":"blue"}}, 2, 3], [{2...]...]
+Note: As a propertie may be a dictionary it's self, be prepared to introspectively parse nodes, edges, and properties.
+
+Client RPC Declarations:
+A dictionary containing:
+host: <host the client is serving the RPC on>
+port: <port number the client is serving the RPC on>
+URI: <URI at which the RPC can be reached>
+help: <a string, URL, or other location where information on the RPC function, arguements, and return can be found.>

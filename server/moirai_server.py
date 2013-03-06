@@ -136,7 +136,8 @@ class MyTopicService:
          print "illegal topic - skipped subscription"
          return False
 
-
+   # NOTE: It is the client's responsibility to set excludeMe = False to ...
+   #       receive the node back with the DBID for ANs and AEs
    @exportPub("graph", True)
    def publish(self, topicUriPrefix, topicUriSuffix, event):
       """
@@ -246,6 +247,13 @@ class PubSubServer1(WampServerProtocol):
 
       # Register an RPC to handle Cypher requests
       self.registerForRpc(self.topicservice, "http://%s/%s/" % (app_domain, app_name))
+
+      # TODO: Make this part of the custom handler
+      #       write a publisher which stores all published RPCs
+      #       write a custom subscriber which sends back all published RPCs
+      #       write a custom unsubscriber which removes RPCs from the published RPC list
+      # Register a pubsub for clients to exchange information on RPCs they Provide
+      self.registerForPubSub("http://" + app_domain + "/rpc")
 
  
 ### MAIN CODE EXECUTION ### 

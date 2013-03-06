@@ -84,7 +84,7 @@ for opt, arg in opts:
       ws_port = arg
 
 # Create the empty graph to populate
-G = nx.Graph()
+G = nx.DiGraph()
 
 
 ### Class & Method Definitions ###
@@ -109,9 +109,10 @@ class MyClientProtocol(WampClientProtocol):
          # For each node
          # Node will be a dictionary w/ a key of the DBID and value of a dict of properties
          for i in range(1, len(result)):
-#         for node in result[1]:
-            for id in result[i]:
-               G.add_node(id, result[i][id])
+#            print i # debug
+            for id in result[i][0]:
+#               print id # debug
+               G.add_node(id, result[i][0][id])
       # Edges being returned
       elif result[0][0] == "r":
          print result # DEBUG
