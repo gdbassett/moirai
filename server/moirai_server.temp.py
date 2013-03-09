@@ -116,10 +116,10 @@ graph_db = neo4j.GraphDatabaseService("http://" + neo4j_host + ":" + neo4j_port 
 # This handles the subscriptions and publications for the app
 class MyTopicService:
 
-   def __init__(self, allowedTopicIds):
+   def __init__(self, protocol, allowedTopicIds):
       self.allowedTopicIds = allowedTopicIds
       print "Allowed topics are %s" % allowedTopicIds # debug
-
+      self.protocol = protocol
 
    # returns true or false  if we're going to let the client subscribe to
    #   the topic prefix (graph) and suffix (a number)
@@ -217,7 +217,17 @@ class MyTopicService:
 
    @exportRpc
    def getState(self):
-      self.factory.protocol.dispatch(1, "PONG", eligible = Self)
+      print "exporting state"
+      topic = "http://%s/%s/graph1" % (app_domain, app_name)
+      # get all nodes (retrieve by indexes?)
+      # get all edges (retrieve by nodes?)
+      # format the nodes/edges as DCES events
+         # for each node & edge, get it's properities
+         # build the DCES dictionary
+         # add it to an overarching dictionary or list
+      # for DCES_event in events:
+      self.protocol.dispatch(topic, DCES_event, self.protocol.session_id)
+      return True
 
 
    # TODO: Make "params" optional
@@ -247,6 +257,9 @@ class MyTopicService:
 
 # This is the actual app
 class PubSubServer1(WampServerProtocol):
+
+#   def __init__(self, factory):
+#      self.factory = factory
  
    def onSessionOpen(self):
  
@@ -256,7 +269,7 @@ class PubSubServer1(WampServerProtocol):
  
       # This picks a few topics within the app and says what to do with them
       ## register a topic handler to control topic subscriptions/publications
-      self.topicservice = MyTopicService(topicIds)
+      self.topicservice = MyTopicService(self, topicIds)
       self.registerHandlerForPubSub(self.topicservice, "http://%s/%s/" % (app_domain, app_name))
 
       # Register an RPC to handle Cypher requests

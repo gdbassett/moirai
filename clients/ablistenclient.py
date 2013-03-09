@@ -41,6 +41,8 @@ class PubSubClient1(WampClientProtocol):
       # Set the App Prefix
       self.prefix("moirai", "http://%s/%s#" % (app_domain, app_name))
 
+      print "Subscribing to %s at port %s" % (app_name, ws_port)
+
       # Suscribe to the pubsub
       self.subscribe("moirai:graph1", self.onApp)
 

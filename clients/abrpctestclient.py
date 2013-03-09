@@ -44,6 +44,10 @@ class SimpleClientProtocol(WampClientProtocol):
    def show(self, result):
       print "SUCCESS:", result
 
+   def onMsg(self, topicUri, event):
+      print app_name, topicUri, event
+
+
    def logerror(self, e):
       erroruri, errodesc, errordetails = e.value.args
       print "ERROR: %s ('%s') - %s" % (erroruri, errodesc, errordetails)
@@ -56,12 +60,19 @@ class SimpleClientProtocol(WampClientProtocol):
 
       # Set the App Prefix
       self.prefix("moirai", "http://%s/%s/" % (app_domain, app_name))
+
+      # Subscribe to the graph so that we get the graph state
+      self.subscribe("moirai:graph1", self.onMsg)
+
       # Set our static query for testing purposes
       query = "START n = node(*) RETURN *;"
       params = {}
 
       # Execute the RPC
       self.call("moirai:cypher", query, params).addCallback(self.show)
+
+      # Test to see if this works
+      self.call("moirai:getState")
 
 
 ############## STUFF HAPPENS HERE  #############
