@@ -217,10 +217,15 @@ class MyTopicService:
 
    @exportRpc
    def getState(self):
+      query1 = "START n=node(*) RETURN n;"
+      query2 = "START n=node(*) MATCH n-[r]->m RETURN r, ID(n), ID(m);"
+      params = {}
       print "exporting state"
       topic = "http://%s/%s/graph1" % (app_domain, app_name)
       # get all nodes (retrieve by indexes?)
+      node_list, node_metadata = cypher.execute(graph_db, query1, params)
       # get all edges (retrieve by nodes?)
+      edge_list, edge_metadata = cypher.execute(graph_db, query2, params)
       # format the nodes/edges as DCES events
          # for each node & edge, get it's properities
          # build the DCES dictionary
