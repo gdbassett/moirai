@@ -50,17 +50,6 @@ from py2neo import neo4j, cypher
 config_file = "moirai_server.cfg"
 helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -w : Enable the moirai webserver (defaults to disabled).\r\n  -t <topicId> : The graph topic to subscribe to.\r\n  -s <server host> : The websocket server host.\r\n  -p <server port> : The websocket server port.\r\n  -n <neo4j host> : The neo4j server host.\r\n  -o <neo4j port> : The neo4j server port.\r\n  --http-dir=<webserver directory> : directory to serve files from.\r\n  --http-port=<webserver port> : Port to run webserver on.'
 
-#app_domain = "informationsecurityanalytics.com"
-#app_name = "moirai"
-#webserver_directory = "."
-#webserver_port = 8081
-#ws_host = "localhost"
-#ws_port = "9000"
-#neo4j_host = "localhost"
-#neo4j_port = "7474"
-#topicIds = [1]
-#run_webserver = False
-
 
 ### Set Environment ###
 
@@ -116,10 +105,10 @@ graph_db = neo4j.GraphDatabaseService("http://" + neo4j_host + ":" + neo4j_port 
 # This handles the subscriptions and publications for the app
 class MyTopicService:
 
-   def __init__(self, allowedTopicIds):
+   def __init__(self, protocol, allowedTopicIds):
       self.allowedTopicIds = allowedTopicIds
       print "Allowed topics are %s" % allowedTopicIds # debug
-
+      self.protocol = protocol
 
    # returns true or false  if we're going to let the client subscribe to
    #   the topic prefix (graph) and suffix (a number)
@@ -217,7 +206,18 @@ class MyTopicService:
 
    @exportRpc
    def getState(self):
-      self.factory.protocol.dispatch(1, "PONG", eligible = Self)
+      query1 = "START n=node(*) RETURN n;"
+      query2 = "START n=node(*) MATCH n-[r]->m RETURN r, ID(n), ID(m);"
+      params = {}
+      print "exporting state"
+      # get all nodes
+      # pass each row to cypher2pubsub to change into DCES events
+      cypher.execute(graph_db, query1, params, 
+                     row_handler=self.cypher2pub)
+      # get all edges (retrieve by nodes?)
+      cypher.execute(graph_db, query2, params,
+                     row_handler=self.cypher2pub)
+      return True
 
 
    # TODO: Make "params" optional
@@ -242,11 +242,40 @@ class MyTopicService:
          results.append(row)
       print "Returning Results." # DEBUG
       return results
-               
+
+   # takes a row from a cypher
+   # return it to the cypher caller as a pubsub dispatch to the caller
+   # note: only handles the first item returned
+   def cypher2pub(self, row):
+      topic = "http://%s/%s/graph1" % (app_domain, app_name)
+      i = row[0]
+#      print self.protocol.session_id # DEBUG
+      # if the first item is a node, handle it
+      if type(i) == neo4j.Node:
+#         print "Node is %s" % i
+         # Get the node properties & save in event w/ node ID and "an"
+         DCES_event = {"an":{i.id:i.get_properties()}}
+         if "Metadata" in DCES_event["an"][i.id]:
+            DCES_event["an"][i.id]["Metadata"] = json.loads(DCES_event["an"][i.id]["Metadata"])
+         if "CPT" in DCES_event["an"][i.id]:
+            DCES_event["an"][i.id]["CPT"] = json.loads(DCES_event["an"][i.id]["CPT"])
+         # TopicID set to "1" statically.  In theory, we should get what the client joins
+         self.protocol.dispatch(topic, DCES_event, self.protocol.session_id)
+      # if the first item is a Relationship, handle it
+      if type(i) == neo4j.Relationship:
+#         print i
+         DCES_event = {"ae":{i.id:i.get_propeties()}}
+         if "Metadata" in DCES_event["ae"][i.id]:
+            DCES_event["an"][i.id]["Metadata"] = json.loads(DCES_event["an"][i.id]["Metadata"])             
+         # TopicID set to "1" statically.  In theory, we should get what the client joins
+         self.protocol.dispatch(topic, DCES_event, self.protocol.session_id)
 
 
 # This is the actual app
 class PubSubServer1(WampServerProtocol):
+
+#   def __init__(self, factory):
+#      self.factory = factory
  
    def onSessionOpen(self):
  
@@ -256,7 +285,7 @@ class PubSubServer1(WampServerProtocol):
  
       # This picks a few topics within the app and says what to do with them
       ## register a topic handler to control topic subscriptions/publications
-      self.topicservice = MyTopicService(topicIds)
+      self.topicservice = MyTopicService(self, topicIds)
       self.registerHandlerForPubSub(self.topicservice, "http://%s/%s/" % (app_domain, app_name))
 
       # Register an RPC to handle Cypher requests
