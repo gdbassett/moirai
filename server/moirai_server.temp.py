@@ -50,17 +50,6 @@ from py2neo import neo4j, cypher
 config_file = "moirai_server.cfg"
 helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -w : Enable the moirai webserver (defaults to disabled).\r\n  -t <topicId> : The graph topic to subscribe to.\r\n  -s <server host> : The websocket server host.\r\n  -p <server port> : The websocket server port.\r\n  -n <neo4j host> : The neo4j server host.\r\n  -o <neo4j port> : The neo4j server port.\r\n  --http-dir=<webserver directory> : directory to serve files from.\r\n  --http-port=<webserver port> : Port to run webserver on.'
 
-#app_domain = "informationsecurityanalytics.com"
-#app_name = "moirai"
-#webserver_directory = "."
-#webserver_port = 8081
-#ws_host = "localhost"
-#ws_port = "9000"
-#neo4j_host = "localhost"
-#neo4j_port = "7474"
-#topicIds = [1]
-#run_webserver = False
-
 
 ### Set Environment ###
 
@@ -221,17 +210,13 @@ class MyTopicService:
       query2 = "START n=node(*) MATCH n-[r]->m RETURN r, ID(n), ID(m);"
       params = {}
       print "exporting state"
-      topic = "http://%s/%s/graph1" % (app_domain, app_name)
-      # get all nodes (retrieve by indexes?)
-      node_list, node_metadata = cypher.execute(graph_db, query1, params)
+      # get all nodes
+      # pass each row to cypher2pubsub to change into DCES events
+      cypher.execute(graph_db, query1, params, 
+                     row_handler=self.cypher2pub)
       # get all edges (retrieve by nodes?)
-      edge_list, edge_metadata = cypher.execute(graph_db, query2, params)
-      # format the nodes/edges as DCES events
-         # for each node & edge, get it's properities
-         # build the DCES dictionary
-         # add it to an overarching dictionary or list
-      # for DCES_event in events:
-      self.protocol.dispatch(topic, DCES_event, self.protocol.session_id)
+      cypher.execute(graph_db, query2, params,
+                     row_handler=self.cypher2pub)
       return True
 
 
@@ -257,7 +242,33 @@ class MyTopicService:
          results.append(row)
       print "Returning Results." # DEBUG
       return results
-               
+
+   # takes a row from a cypher
+   # return it to the cypher caller as a pubsub dispatch to the caller
+   # note: only handles the first item returned
+   def cypher2pub(self, row):
+      topic = "http://%s/%s/graph1" % (app_domain, app_name)
+      i = row[0]
+#      print self.protocol.session_id # DEBUG
+      # if the first item is a node, handle it
+      if type(i) == neo4j.Node:
+#         print "Node is %s" % i
+         # Get the node properties & save in event w/ node ID and "an"
+         DCES_event = {"an":{i.id:i.get_properties()}}
+         if "Metadata" in DCES_event["an"][i.id]:
+            DCES_event["an"][i.id]["Metadata"] = json.loads(DCES_event["an"][i.id]["Metadata"])
+         if "CPT" in DCES_event["an"][i.id]:
+            DCES_event["an"][i.id]["CPT"] = json.loads(DCES_event["an"][i.id]["CPT"])
+         # TopicID set to "1" statically.  In theory, we should get what the client joins
+         self.protocol.dispatch(topic, DCES_event, self.protocol.session_id)
+      # if the first item is a Relationship, handle it
+      if type(i) == neo4j.Relationship:
+#         print i
+         DCES_event = {"ae":{i.id:i.get_propeties()}}
+         if "Metadata" in DCES_event["ae"][i.id]:
+            DCES_event["an"][i.id]["Metadata"] = json.loads(DCES_event["an"][i.id]["Metadata"])             
+         # TopicID set to "1" statically.  In theory, we should get what the client joins
+         self.protocol.dispatch(topic, DCES_event, self.protocol.session_id)
 
 
 # This is the actual app
