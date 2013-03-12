@@ -168,17 +168,43 @@ function connect() {
 // END CONNECT
 
 function connect2() {
-  ab.connect(wsuri,
+  ab.connect(addressBox.value,
 
     // WAMP session was established
     function (session) {
 
       sess = session;
 
-      console.log("Connected to " + wsuri);
+      console.log("Connected to " + addressBox.value);
       // Now that the WAMP session is connected, do something:
-      getGraph();
+      //Prefix the connection
+      sess.prefix("moirai", "http://" + app_domain + "/" + app_name + "/");
+
+      //Subscribe to the pubsub as graph state will come over it
+      sess.subscribe("moirai:graph1",
+        // on event publication callback
+        function (topic, event) {
+          // Log it so we know what happened
+          addtolog("got event: " + event);
+          // Add it into the graph object
+          updateGraph(event);
+          // Convert it to a JSON object
+          var eventObject = JSON.parse(event);
+          // Get the event type
+          for (key in eventObject) {
+            // If this is a change to nodes,
+            if (key in {"an":"", "cn":"", "rn":""}) { // This treats CNs as RNs & doesn't handle DNs
+              // Get the node id
+              for (nodeId in eventObject[key]) {    
+                // Update the node table
+                // TODO: better handle nodes
+                update_node_table(nodeId);
+              }
+            }
+          }
+      });
     },
+
 
     // WAMP session is gone
     function (code, reason) {
@@ -193,27 +219,6 @@ function connect2() {
     }
   );
 }
-//TODO: Update this to populate the table or an intermediary graph object
-// TAKES: nothing
-// DOES: queries the session defined in "sess" for the graph
-// DOES: populates the graph table w/ nodes or the whole graph somewhere
-// RETURNS: nothing
-getGraph() {
-  var query1 = "START n = node(*) RETURN n;";
-  var query2 = "START n = node(*) MATCH n-[r]->m RETURN r, ID(n), ID(m);";
-  var params = {};
-
-
-  //Prefix the connection
-  sess.prefix("moirai", "http://" + app_domain + "/" + app_name + "/");
-
-  //Make call to get graph nodes. Currently just logs them.
-  sess.call("moirai:cypher", query1, params).then(addToLog);
-  //Make call to get graph edges.  Currently just logs them.
-  sess.call("moirai:cypher", query2, params).then(addToLog);
-
-}
-
 
 
 // Logs ws information to a text box
