@@ -178,18 +178,23 @@ function connect2() {
       console.log("Connected to " + addressBox.value);
       // Now that the WAMP session is connected, do something:
       //Prefix the connection
-      sess.prefix("moirai", "http://" + app_domain + "/" + app_name + "/");
+      console.log("prefixing moirai");
+      session.prefix("moirai", "http://" + app_domain + "/" + app_name + "/");
 
       //Subscribe to the pubsub as graph state will come over it
-      sess.subscribe("moirai:graph1",
+      console.log("Prefixing complete, subscribing to graph1");
+      session.subscribe("moirai:graph1",
         // on event publication callback
         function (topic, event) {
           // Log it so we know what happened
-          addtolog("got event: " + event);
+          var eventString = JSON.stringify(event);
+          console.log("got topic " + topic + " and event: " + eventString);
+          addToLog("got event: " + eventString);
           // Add it into the graph object
           updateGraph(event);
           // Convert it to a JSON object
-          var eventObject = JSON.parse(event);
+//          var eventObject = jQuery.parseJSON(event);
+          var eventObject = event;
           // Get the event type
           for (key in eventObject) {
             // If this is a change to nodes,
@@ -203,6 +208,8 @@ function connect2() {
             }
           }
       });
+      
+      session.call("moirai:getState").then(addToLog);
     },
 
 
@@ -241,7 +248,9 @@ function updateGraph(event_data) {
     eventObj = {};
     eventArray = [];
     //parse the event data into a json object
-    eventObj = jQuery.parseJSON(event_data);
+//    eventObj = jQuery.parseJSON(event_data);
+    //  autobahn returns an object, not a string
+    eventObj = event_data
     //break the event type and event id off the rest of the object
     eventArray = parse_json_event(eventObj);
     //Update the graph object
