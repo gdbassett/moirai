@@ -20,7 +20,7 @@
 ### Imports ###
 
 
-import sys, getopt, ConfigParser
+import sys, getopt, ConfigParser, json
 from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, DeferredList
@@ -34,19 +34,10 @@ config_file = "moirai.cfg"
 
 helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -t <topicId> : The graph topic to subscribe to.\r\n  -d <app domain> : The app domain to connect to.\r\n  -a <app name> : The name of the app to connect to.\r\n  -s <server host> : The websocket server host.\r\n  -p <server port> : The websocket server port.'
 
-# Subscribe Variables
-#app_domain = "informationsecurityanalytics.com"
-#app_name = "moirai"
-#topicId = "1"
-
-# Server Variables
-#ws_host = "localhost"
-#ws_port = "9000"
-
 # Test Data
-testDict = {'an': {'21': {'b': 0.6901961, 'g': 0.7882353, 'Degree': 4, 'Label': 'Sends phishing email asking for info to be mailed back or entered into website.', 'r': 0.4745098, 'y': -350.97687, 'x': 307.24896, 'z': 0, 'CPT': '{"nodeId":21,"index":["18",true,false],"1":[1,"1","0"],"0":[0,"0","1"]}', 'Class': 'Event', 'size': 42.4}}}
-query = "START n = node(*) RETURN *;"
-params = {}
+#testDict = {'an': {'21': {'b': 0.6901961, 'g': 0.7882353, 'Degree': 4, 'Label': 'Sends phishing email asking for info to be mailed back or entered into website.', 'r': 0.4745098, 'y': -350.97687, 'x': 307.24896, 'z': 0, 'CPT': '{"nodeId":21,"index":["18",true,false],"1":[1,"1","0"],"0":[0,"0","1"]}', 'Class': 'Event', 'size': 42.4}}}
+#query = "START n = node(*) RETURN *;"
+#params = {}
 
 
 ### SET ENVIRONMENT ###
@@ -88,6 +79,10 @@ for opt, arg in opts:
 
 class MyClientProtocol(WampClientProtocol):
 
+   def parseCypher(self, result):
+      for row in result:
+         print row
+         
    def show(self, result):
       print "SUCCESS:", result
 
@@ -113,14 +108,21 @@ class MyClientProtocol(WampClientProtocol):
       print "Subscribing to moirai:graph1"
       self.subscribe("moirai:graph1", self.onApp)
 
-      # Example of publish to the pubsub
-      self.publish("moirai:graph1", testDict)
-
+      print "Input Query: "
+      query = raw_input('Input your cypher or blank to quit: ')
+      if query == "":
+         self.done()
+      print "Input Params: "
+      params = raw_input('Input a dictionary with any necessary params: ')
+      if params == "":
+         params = {}
+      else:
+         params = json.loads(params)
       # Example to make a call to the Cypher RPC
-      self.call("moirai:cypher", query, params).addCallback(self.show)
+      self.call("moirai:cypher", query, params).addCallback(self.parseCypher)
 
       # quit after doing stuff
-#      self.done()
+      self.done()
 
 
 ### Program Execution ###
