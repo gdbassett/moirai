@@ -108,12 +108,13 @@ class MyClientProtocol(WampClientProtocol):
       print "Subscribing to moirai:graph1"
       self.subscribe("moirai:graph1", self.onApp)
 
-      print "Input Query: "
-      query = raw_input('Input your cypher or blank to quit: ')
+      print "Input Cypher Query: "
+      query = raw_input()
       if query == "":
+         print "Quitting due to no query."
          self.done()
-      print "Input Params: "
-      params = raw_input('Input a dictionary with any necessary params: ')
+      print "Input Params as a dictionary: "
+      params = raw_input()
       if params == "":
          params = {}
       else:
