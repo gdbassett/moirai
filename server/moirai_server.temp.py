@@ -1,4 +1,4 @@
-###############################################################################
+﻿###############################################################################
 ##
 ##  Copyright 2011,2012 Tavendo GmbH
 ##
@@ -287,7 +287,46 @@ class MyTopicService:
    #  node was 'found'.
    @exportRpc
    def assessConstruct(self, DCES_event):
-      pass
+      # Create a query to return matching attribute nodes
+      query1 = "START n = node(*) where n.class! = 'attribute' and n.metadata! = {a} RETURN ID(n);"
+
+      # Create a dbConstructId Attribute node
+      dbConstructId = hash(repr(sorted(DCES_event.items())))
+      dbConstructIdNode = {"an":{"1":{"metadata": ("dbconstructid", dbConstructId), "class":"attribute"}}}
+      # TODO: add node to graph, store dbNodeId
+      # TODO: create an edge from the dbConstructIdNode to all nodes in the construct.
+      #    Alternately, could use original ConstructId children
+      # TODO: Ensure the edge IDs don't conflict with the construct, nor the dbNodeId of the dbConstructIdNode conflict with the constructs nodeIds
+
+      if "an" in DCES_event:
+         for node in DCES_event["an"]:
+            # Do a cypher to see if the node exists in the graph
+            resp, meta = self.cypher(query1, {"a":node.metadata})
+            # check to see if there as a match:
+            if resp.length > 0: # something matched
+               # TODO: change the nodeID to the dbNodeID
+               # TODO: change the nodeID in all edges in construct to dbNodeID
+            else: # nothing matched
+               # TODO: add node to graph
+               # TODO: change the nodeID in all edges in construct to dbNodeId
+      elif "ae" in DCES_event:
+         # Assumed at this point all edges have dbNodeIds from previous step.
+         IDs = moirai.ae_handler(graph_db,DCES_event["ae"])
+      elif "cn" in DCES_event:
+         print "change nodes not handled yet" #TODO
+      elif "ce" in DCES_event:
+         print "change edges not handled yet" #TODO
+      elif "rn" in DCES_event:
+         print "replace nodes not handled yet" #TODO
+      elif "re" in DCES_event:
+         print "replace edges not handled yet" #TODO
+      elif "dn" in DCES_event:
+         print "delete node not handled yet" #TODO
+      elif "de" in DCES_event:
+         print "delete edge not handled yet" #TODO
+         
+      return dbConstructId # return the construct ID assigned by the DB
+      pass # DEBUG
 
    # Takes a DCES Event construct
    # Automatically adds it to the graph (links automatically identified)
