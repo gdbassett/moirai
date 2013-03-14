@@ -26,10 +26,10 @@ var logBox = null;
 //create the empty graph object
 var g = {};
 // WAMP session object
-var sess = null;
+var sess;
 // App names to prefix
-var app_domain = "informationsecurityanalytics.com"
-var app_name = "moirai"
+var app_domain = "informationsecurityanalytics.com";
+var app_name = "moirai";
 
 
 //jQuery initialization function
@@ -47,12 +47,14 @@ $(document).ready(function() {
     // Catch input to message box (sends commands back on WS)
     $('#text').keypress(function(event) {  
         if (event.keyCode == '13') {  
-            send($('#text').val());  
+//            send($('#text').val());  
+            var pubObj = jQuery.parseJSON($('#text').val());
+            sess.publish("moirai:graph1",pubObj);
         }
     });
 
    
-    //Bug: Doesn't work.
+
     //When you click the cpt cell of the table, reveal the CPT form
     $(document).on('click', '.cpt', function() {
         $('.cpt_form').hide();
@@ -61,7 +63,7 @@ $(document).ready(function() {
     });
     
 
-//BUG: This doesn't work
+
     //Initialize graph canvas
     var sigRoot = document.getElementById("myCanvas");
     sigInst = sigma.init(sigRoot);
@@ -567,6 +569,8 @@ function create_cpt_form(cptObj) {
     //Add buttons at the bottom
     cpt_form = cpt_form + '<div class="cpt-form-button"><input type="submit" value="AND" class="cpt-form" id="cpt_form_' + cptObj["nodeId"] + '.and_button" onClick="cpt_and('+cptObj["nodeId"]+');" /><input type="submit" value="OR" class="cpt-form" id="cpt_form_' + cptObj["nodeId"] + '.or_button" onClick="cpt_or('+cptObj["nodeId"]+');" /><br />\n';
     cpt_form = cpt_form + '<input type="submit" value=&#x2713; class="cpt-form" id="cpt_form_' + cptObj["nodeId"] + '.save_button" onClick="cpt_save('+cptObj["nodeId"]+');" /><input type="submit" value=&#x2717; class="cpt-form" id="cpt_form_' + cptObj["nodeId"] + '.cancel_button" onClick="cpt_cancel('+cptObj["nodeId"]+');" /><br /></div>\n';
+//    // Below is debug attempt.  Switchign input to a button didn't help.
+//    cpt_form = cpt_form + '<button class="cpt-form" id="cpt_form_' + cptObj["nodeId"] + '.save_button" onClick="cpt_save('+cptObj["nodeId"]+')">&#x2713</button><input type="submit" value=&#x2717; class="cpt-form" id="cpt_form_' + cptObj["nodeId"] + '.cancel_button" onClick="cpt_cancel('+cptObj["nodeId"]+');" /><br /></div>\n';
     cpt_form = cpt_form + '</form>\n';
     
     // DEBUG: Log the CPT form so we can see what it is
@@ -635,12 +639,22 @@ function create_cpt_form(cptObj) {
         
         // Turn the cptObj into a json string
         var cptString = JSON.stringify(cptObj);
-        
-        // wrap the cpt string
-        cptString = '{"cn":{"'+nodeId+'":{"CPT":'+cptString+'}}}';
-        
+//        
+//        // wrap the cpt string
+//        cptString = '{"cn":{"'+nodeId+'":{"CPT":'+cptString+'}}}';
+ 
         // send the string to th server
-        send(cptString);
+//        send(cptString);
+
+        //add extra stuff to object
+        var DCES_event = {};
+        DCES_event["cn"] = {};
+        DCES_event["cn"][nodeId] = {};
+        DCES_event["cn"][nodeId]["CPT"] = cptString;  // cpt must be string as python doesn't understand the JS object
+        //send to moirai on autobahn session
+        sess.publish("moirai:graph1", DCES_event);
+
+//        return true;
     };
     
     
@@ -792,7 +806,7 @@ function create_cpt_form(cptObj) {
         }  
         try{  
           socket.send(text);  
-          addToLog('Sent: '+text)  
+          addToLog('Sent: '+text);  
         } catch(exception){  
           addToLog('Msg Not Sent');  
         }  
@@ -832,14 +846,14 @@ function create_cpt_form(cptObj) {
         };
         // add the nodes and edges for parents
         for (var i=0; i < parents.length; i++) {
-//            console.log("Parent is " + parents); //debug
+            console.log("Parent is " + parents); //debug
             sigInst.addNode(parents[i], {
             Name: parents[i],
             label: parents[i] + " - (" + g.nodes[parents[i]].attr_array['Class'] + ") - " + g.nodes[parents[i]].attr_array['Label'],
             size: 5,
             x: -0.75,
             y: (i/parents.length) * 0.8,
-            color: "#00FF00",
+            color: "#00FF00"
             }).addEdge(i,parents[i],nodeId);
         }
         // Draw it
@@ -862,6 +876,6 @@ function create_cpt_form(cptObj) {
                 laksis_address: $("#laksis_address").val()
             },
             function(data) {
-                $("#get_risks").append(data)
+                $("#get_risks").append(data);
             });
     }
