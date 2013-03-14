@@ -194,6 +194,8 @@ class MyTopicService:
                print "ok, publishing updated event %s" % updatedEvent
                return updatedEvent
             else:
+#               print type(event) # Debug
+#               print event # Debug
                print "event is not dict or misses DCES Version"
                return None
          else:
