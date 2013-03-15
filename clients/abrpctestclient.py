@@ -40,13 +40,14 @@ class SimpleClientProtocol(WampClientProtocol):
    Demonstrates simple Remote Procedure Calls (RPC) with
    AutobahnPython and Twisted Deferreds.
    """
+   def nodesFirst(self, result):
+      self.show(result)
+      query2 = "START n=node(*) MATCH n-[r]->m RETURN r, ID(n), ID(m);"
+      params = {}
+      self.call("moirai:cypher", query2, params).addCallback(self.show)
 
    def show(self, result):
       print "SUCCESS:", result
-
-   def onMsg(self, topicUri, event):
-      print app_name, topicUri, event
-
 
    def logerror(self, e):
       erroruri, errodesc, errordetails = e.value.args
@@ -60,19 +61,12 @@ class SimpleClientProtocol(WampClientProtocol):
 
       # Set the App Prefix
       self.prefix("moirai", "http://%s/%s/" % (app_domain, app_name))
+      
+      query = "START n=node(*) RETURN n;"
 
-      # Subscribe to the graph so that we get the graph state
-      self.subscribe("moirai:graph1", self.onMsg)
-
-      # Set our static query for testing purposes
-      query = "START n = node(*) RETURN *;"
       params = {}
+      self.call("moirai:cypher", query, params).addCallbacks(self.nodesFirst)
 
-      # Execute the RPC
-      self.call("moirai:cypher", query, params).addCallback(self.show)
-
-      # Test to see if this works
-      self.call("moirai:getState")
 
 
 ############## STUFF HAPPENS HERE  #############
