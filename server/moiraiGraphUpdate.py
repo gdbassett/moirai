@@ -16,12 +16,11 @@
 ##
 ###############################################################################
 # Handles the passing of graph information to Moirai
-# TODO: Make EVERYTHING lower case
 
 
 ### INCLUDES ###
 
-# Imported to parse the date
+# Imported to parse the start and finish properties
 from dateutil import parser
 import datetime
 
@@ -30,6 +29,9 @@ from py2neo import neo4j, cypher
 
 # For json
 import json
+
+# for logging failed graph adds
+import logging
 
 
 ### STATIC VARIABLES ###
@@ -43,126 +45,316 @@ import json
 ### CLASS AND METHOD DEFINITIONS #### 
 
 
-
-# add the node, return the ID from Neo4j
-# returns a dictionary with key of origin ID and value of DB ID
-def ae_handler(graph_db, update):
+# TAKES: A py2neo graph object and an "ae" dictionary
+# DOES: Validates the edge (maybe sprucing up the properties)
+# DOES: add the edge
+# RETURNS: a dictionary with key of origin ID and value of DB ID
+def ae_handler(graph_db, event):
    IDs = {}
-   for i in update:
-      source = graph_db.get_node(update[i]["source"])
-      target = graph_db.get_node(update[i]["target"])
-      source_attrs = source.get_properties()
-      # TODO: Pop source/target off of update?
-      if "Metadata" in update[i]:
-         update[i]["Metadata"] = json.dumps(update[i]["Metadata"])
-      if "Class" in source_attrs and source_attrs["Class"] == "Attribute":
-         relationship = "describes" # not sure the double list reference is correct
+   for edge in event:
+      logging.info("Adding Edge %s" % edge)
+      # Ensure the edge has the required properties
+      if validateEdge(event[edge]):
+         try:
+            # Ensure that the properties have the correct values
+            event[edge] = validateEdgeProperties(event[edge])
+            # Get the source and target edges
+            source = graph_db.get_node(event[edge]["source"])
+            target = graph_db.get_node(event[edge]["target"])
+            source_attrs = source.get_properties()
+            # Not strictly necessary, but we'll set the relationship just to make sure
+            if "class" in source_attrs and source_attrs["class"] == "attribute":
+               relationship = "describes" 
+            else:
+               relationship = "leads to"
+            # Create the actual edge
+            e = graph_db.get_or_create_relationships((source, relationship, target, event[edge]))
+            IDs[edge] = e[0].id
+         except:
+            logging.error("Edge %s properties did not validate and will not be added") % edge
       else:
-         relationship = "leads to"
-      edge = graph_db.get_or_create_relationships((source, relationship, target, update[i]))
-      IDs[i] = edge[0].id
+         logging.error("Edge %s property values did not validate and will not be added") % edge
    return IDs
 
 
-# add the node, return the ID from Neo4j
-# returns a dictionary with key of origin ID and value of DB ID
-def an_handler(graph_db, update):
+# TAKES: A py2neo graph object and an "an" dictionary
+# DOES: Validates the node (maybe sprucing up the properties)
+# DOES: add the node
+# RETURNS: a dictionary with key of origin ID and value of DB ID
+def an_handler(graph_db, event):
    print "Starting to add the node" # debug
    IDs = {}
-   for i in update:
-      # TODO: Make sure the node doesn't already exist
-      if "Metadata" in update[i]:
-         update[i]["Metadata"] = json.dumps(update[i]["Metadata"])
-      #TODO Pop ID key off of update?
-      n = graph_db.create(update[i]) # ignores ID passed in
-      IDs[i] = n[0].id
-   print "Done adding the node" # debug
+   for node in event:
+      logging.info("Adding Node %s" % node) #debug
+      # Make sure the node has the correct properties
+      if validateNode(event[node]):
+         try:
+            # Make sure the properties have appropriate values
+            event[node] = validateEdgeProperties(event[node])
+            # TODO: Compare the node to nodes already in the graph and combine it if they already exist
+            n = graph_db.create(event[node]) # ignores ID passed in
+            IDs[node] = n[0].id
+         except:
+            logging.error("Node %s properties did not validate and will not be added") % node
+      else:
+         logging.error("Node %s property values did not validate and will not be added") % node
+#   print "Done adding the node" # debug
    return IDs
 
 
-# get the edge by id then update it with the given attributes
-# (if source/destination changes, get it's properties, delete the edge,
-# update the properties, delete, replace, and return the ID)
-# TODO: DOUBLE CHECK
-def ce_handler(graph_db, update):
-   for i in update:
-      query = "START a=node({A}), b=node({B}) MATCH a-[r]->b RETURN r"
-      params = {"A": update[i]["source"], "B": update[i]["target"]}
-      edge, meta = cypher.execute(graph_db, query, params)
-      if "Metadata" in update[i]:
-         update[i]["Metadata"] = json.dumps(update[i]["Metadata"])
-      edge[0][0].update_properties(update[i])
-#      eproperties = edge.get_properties()
-#      edge.setproperties(dict(eproperties.items() + update[i].items()))
+# TAKES: A py2neo graph object and an "ce" dictionary
+# DOES: Validates the edge (maybe sprucing up the properties)
+# DOES: looks the edge up by source/target and adds the supplied properties dictionary
+# RETURNS: nothing
+def ce_handler(graph_db, event):
+   query = "START a=node({A}), b=node({B}) MATCH a-[r]->b RETURN r;"
+   for edge in event:
+      logging.info("Changing Edge %s" % edge) #debug
+      # Make sure the edge has a source and target
+      if ("source" not in event[edge]) and ("target" not in event[edge]):
+         try:
+            # Ensure that the properties have the correct values
+            event[edge] = validateEdgeProperties(event[edge])
+            # Set the params for the query to get the current edge
+            params = {"A": event[edge]["source"], "B": event[edge]["target"]}
+            # Retrieve the current edge
+            e, meta = cypher.execute(graph_db, query, params)
+            # Set the first edge in the list of current edges to the new properties
+            e[0][0].update_properties(event[edge])
+         except:
+            logging.error("Edge %s properties did not validate and will not be added") % edge
+      else:
+         logging.error("Edge %s property values did not validate and will not be added") % edge
 
 
-# get the node by id and update it with the given attributes.  Return the ID
-#TODO DOUBLE CHECK
-def cn_handler(graph_db, update):
-   for i in update:
-      node = graph_db.get_node(i)
-      if "metadata" in update[i]:
-         update[i]["metadata"] = json.dumps(update[i]["metadata"])
-      node.update_properties(update[i])
-#      nproperties = node.getproperties()
-#      node.set_properties(dict(nproperties.items() + update[i].items()))
+# TAKES: A py2neo graph object and an "cn" dictionary
+# DOES: Validates the node (maybe sprucing up the properties)
+# DOES: looks the edge up by node id and adds the supplied properties dictionary
+# RETURNS: nothing
+def cn_handler(graph_db, event):
+   for node in event:
+      logging.info("CHanging Node %s" % node) #debug
+      try:
+         # Make sure the properties have appropriate values
+         event[node] = validateEdgeProperties(event[node])
+         # Find the current node
+         n = graph_db.get_node(node)
+         # Update the properties
+         n.update_properties(event[node])
+      except:
+         logging.error("Node %s properties did not validate and will not be added") % node
 
 
 
-# get the edge by id and delete it, return ID or false
-#TODO DOUBLE CHECK
-def de_handler(graph_db, update):
-   for i in update:
-      query = "START a=node({A}), b=node({B}) MATCH a-[r]->b RETURN r"
-      params = {"A": update[i]["source"], "B": update[i]["target"]}
-      edge, meta = cypher.execute(graph_db, query, params)
-      print edge[0][0] # DEBUG
-      edge[0][0].delete()
+# TAKES: A py2neo graph object and a de event dictionary
+# DOES: Identifies the edge by source/target and deletes it
+# RETURNS: Nothing
+def de_handler(graph_db, event):
+   # Set the query to find the edge
+   query = "START a=node({A}), b=node({B}) MATCH a-[r]->b RETURN r;"
+   for edge in event:
+      logging.info("Deleting edge %s" % edge) #debug
+      # Make sure the edge has a source and target
+      if ("source" not in event[edge]) and ("target" not in event[edge]):
+         params = {"A": event[edge]["source"], "B": event[edge]["target"]}
+         e, meta = cypher.execute(graph_db, query, params)
+         logging.info("Deleting edge %s" % e[0][0) # DEBUG
+         e[0][0].delete()
+      else:
+         logging.error("Edge Delete missing source/target necessary to delete it.")
 
 
-# get the node by id and delete it, return ID or false
-# TODO: DOUBLE CHECK
-def dn_handler(graph_db, update):
-   for i in update:
-      node = graph_db.get_node(i)
-      parent_edges = node.get_relationships(0)
-      child_edges = node.get_relationships(1)
+# TAKES: A py2neo graph object and a dn event dictionary
+# DOES: Identifies the node by id and deletes it
+# DOES: Deletes edges attached to the node
+# RETURNS: Nothing
+def dn_handler(graph_db, event):
+   for node in event:
+      logging.info("Deleting Node %s" % node) #debug
+      # Find the node and it's edges
+      n = graph_db.get_node(node)
+      parent_edges = n.get_relationships(0)
+      child_edges = n.get_relationships(1)
+      # Delete the edges
       for edge in parent_edges:
          edge.delete()
       for edge in child_edges:
          edge.delete()
-      node.delete()
+      # Delete the node
+      n.delete()
 
 
-# get the edge by id, delete it, and add the given edge.
-# Return the new edge ID
-def re_handler(graph_db, update):
-   for i in update:
-      query = "START a=node({A}), b=node({B}) MATCH a-[r]->b RETURN r"
-      params = {"A": update[i]["source"], "B": update[i]["target"]}
-      edge, meta = cypher.execute(graph_db, query, params)
-      if "Metadata" in update[i]:
-         update[i]["Metadata"] = json.dumps(update[i]["Metadata"])
-      edge[0][0].set_properties(update[i])
+# TAKES: A py2neo graph object and a re event dictionary
+# DOES: Identifies the edge by source/target and replaces it's properties
+# RETURNS: Nothing
+def re_handler(graph_db, event):
+   query = "START a=node({A}), b=node({B}) MATCH a-[r]->b RETURN r;"
+   for edge in event:
+      logging.info("Replacing Edge %s" % edge)
+      # Ensure the edge has the required properties
+      if validateEdge(event[edge]):
+         try:
+            # Ensure that the properties have the correct values
+            event[edge] = validateEdgeProperties(event[edge])                      
+            params = {"A": event[edge]["source"], "B": event[edge]["target"]}
+            # Get the edge
+            e, meta = cypher.execute(graph_db, query, params)
+            # Replace it's properties
+            e[0][0].set_properties(event[edge])
+         except:
+            logging.error("Edge %s properties did not validate and will not be added") % edge
+      else:
+         logging.error("Edge %s property values did not validate and will not be added") % edge
 
 
-# get the node by id, delete it, and add the given node.
-# REturn the new node ID
-def rn_handler(graph_db, update):
-   for i in update:
-      node = graph_db.get_node(i)
-      if "Metadata" in update[i]:
-         update[i]["Metadata"] = json.dumps(update[i]["Metadata"])
-      node.set_properties(update[i])
+# TAKES: A py2neo graph object and a rn event dictionary
+# DOES: Identifies the node by id and replaces it's properties
+# RETURNS: Nothing
+def rn_handler(graph_db, event):
+   for node in event:
+      logging.info("Replace Node %s" % node) #debug
+      # Make sure the node has the correct properties
+      if validateNode(event[node]):
+         try:
+            # Make sure the properties have appropriate values
+            event[node] = validateEdgeProperties(event[node])
+            # Get the node, replace it's properties
+            n = graph_db.get_node(edge)
+            n.set_properties(event[edge])
+         except:
+            logging.error("Node %s properties did not validate and will not be added") % node
+      else:
+         logging.error("Node %s property values did not validate and will not be added") % node
+
+
+# TAKES: A node property dictionary
+# DOES: Validates that node has required properties
+# RETURNS: True if validated, False if properties are missing
+def validateNode(properties):
+   # check event for required property 'class'
+   if "class" not in properties:
+#      raise ValueError("event missing required class property")
+      return False
+   # events and conditions need to have labels
+   if properties["class"] in ["event", "condition"]:
+      if "label" not in properties:
+#         raise ValueError("event or condition clas node missing label property")
+         return False
+   # attributes need to have metadata
+   elsif properties["class"] is "attribute":
+      if "metadata" not in properties:
+#         raise ValueError("no metadata property in attribute event")   
+         return False
+   # check event for require property 'cpt'
+   if "cpt" not in properties:
+#      raise ValueError('No cpt property')
+      return False
+   # check event for required property 'start'
+   elif "start" not in properties:
+#      raise ValueError('No start property')
+      return False
+   return True
+
+     
+# TAKES: A node event property dictionary
+# DOES: Validates the event properties
+# RETURNS: event property dictionary if validated or ValueError if not
+def validateNodeProperties(properties):
+   # check class for required types
+    if "class" in properties:
+        if properties["class"] not in ["event", "attribute", "condition"]:
+              raise ValueError("class property is not allowed types of event, attribute, condition")
+    if "metadata" in properties:
+        # metadata needs to be a dictionary string
+        if type(event["metadata"]) == dict:
+           pass
+        # try and parse the metadata, if we can't return false
+        else:
+           try:
+              properties["metadata"] = json.loads(properties["metadata"])
+           except:
+              raise ValueError("metadata property not parsable")
+        # pull one type:value pair out of metadata, convert to string, & save back to metadata
+        for key in properties["metadata"]:
+           tmp = {}
+           tmp[key] = properties["metadat"][key]
+           properties["metadata"] = json.loads(tmp) 
+           # end after 1.  We're only keeping 1 pieces of metadata
+           break      
+   # check event for required property 'start'
+   if "start" in properties:
+       dt = dateutil.parse(properties["start"])
+       # Parse back to ISO 8601 string
+       properties["start"] = dt.strftime("%Y-%m-%d %H:%M:%S %z")
+       # If finish exists, make sure it's a time
+   if "finish" in properties:
+      # Either parse the start string to a valid date time or return the current date at midnight
+      dt = dateutil.parse(properties["finish"])
+      # Parse back to ISO 8601 string
+      event["finish"] = dt.strftime("%Y-%m-%d %H:%M:%S %z")
+   if "comment" in properties:
+      try:
+         properties["confidence"] = str(event["confidence"])
+      except:
+         raise ValueError("comment could not be parsed into string")
+   return properties
+
+
+# TAKES: An edge property dictionary
+# DOES: Validates that node has required properties
+# RETURNS: True if validated, False if properties are missing
+def validateEdge(properties):
+   # Check for required source property
+   if "source" not in properties:
+#      raise ValueError("No source property in edge")
+      return False
+   # Check for required target property
+   if "target" not in properties:
+#      raise ValueError("No target property in edge")
+      return False
+   if "relationship" not in properties:
+#      raise ValueError("No relationship property in edge")
+      return False
+   return True
+
+
+# TAKES: An edge event property dictionary
+# DOES: Validates the event properties
+# RETURNS: event property dictionary if validated or ValueError if not
+def validateEdgeProperties(properties):
+   # Check for required relationship property
+   if properties["relationship"] not in ["describes", "leads to"]:
+      raise ValueError("Relationship not one of the two required values")
+   if "directed" in properties:
+      if properties["directed"] != True:
+         raise ValueError("Edge is explicitly undirected.")
+   else:
+      properties["directed"] = True
+   if "confidence" in properties:
+      try:
+         properties["confidence"] = int(properties["confidence"])
+      except:
+         raise ValueError("Confidence cannot be parsed to int")
+      if (properties["confidence"] > 100) or (properties["confidence"] < 0):
+         raise ValueError("Confidence value is out of range 0-100")
+   if "comment" in properties:
+      try:
+         properties["confidence"] = str(event["confidence"])
+      except:
+         raise ValueError("comment could not be parsed into string")
+   return properties
+
 
 # TAKES: the graph and event
 # DOES: adds the event to the graph
 # RETURNS: the event as in the graph (replaced IDs)
+# NOTE: Any nodes or edges that fail to validate will not be added and an error logged, but processing will continue
 def addDcesEvent(graph_db, event):
    # Add 'and "DCES_VERSION" in event' to below to check that message
    #   is actually a DCES message, (in case other graph messase are used)
    updatedEvent = {} # empty dictionary for the updated Event
    if "ae" in event: # handle add edge
+      # Add the edge tot he neo4j database
       IDs = ae_handler(graph_db,event["ae"])
       # rewrite the event to use the DBID instead of the originID
       updatedEvent["ae"] = {}
@@ -171,7 +363,6 @@ def addDcesEvent(graph_db, event):
          # Add the origin ID to the DCES record just for reference
          updatedEvent["ae"][IDs[originID]]["originID"] = originID
    if "an" in event: # handle add node
-      print "Adding Node" #debug
       # Add the node to the neo4j database
       IDs = an_handler(graph_db,event["an"])
       # rewrite the event to use the DBID instead of the originID
@@ -206,96 +397,3 @@ def addDcesEvent(graph_db, event):
       updatedEvent["rn"] = event["rn"]
    print "ok, publishing updated event %s" % updatedEvent
    return updatedEvent
-
-# TAKES: A single node property dictionary
-# DOES: Validates the event
-# RETURNS: event if valid and raises ValueError if invalid
-def validateNode(event):
-   # check event for required property 'class'
-   if "class" not in event:
-      raise ValueError("event missing required class property")
-   # check class for required types
-   if event["class"] not in ["event", "attribute", "condition"]:
-      raise ValueError("class property is not allowed types of event, attribute, condition")
-   # events and conditions need to have labels
-   if event["class"] in ["event"], "condition"]:
-      if "label" not in event:
-         raise ValueError("event or condition clas node missing label property")
-   # attributes need to have metadata
-   else:
-      if "metadata" not in event:
-         raise ValueError("no metadata property in attribute event")
-      else:
-         # metadata needs to be a dictionary string
-         if type(event["metadata"]) == dict:
-            pass
-         # try and parse the metadata, if we can't return false
-         else:
-            try:
-               event["metadata"] = json.loads(event["metadata"])
-            except:
-               raise ValueError("metadata property not parsable")
-         # pull one type:value pair out of metadata, convert to string, & save back to metadata
-         for key in event["metadata"]:
-            tmp = {}
-            tmp[key] = event["metadat"][key]
-            event["metadata"] = json.loads(tmp) 
-            # end after 1.  We're only keeping 1 pieces of metadata
-            break      
-   # check event for require property 'cpt'
-   if "cpt" not in event:
-      raise ValueError('No cpt property')
-   # check event for required property 'start'
-   elif "start" not in event:
-      raise ValueError('No start property')
-   # Either parse the start string to a valid date time or return the current date at midnight
-   dt = dateutil.parse(event["start"])
-   # Parse back to ISO 8601 string
-   event["start"] = dt.strftime("%Y-%m-%d %H:%M:%S %z")
-   # If finish exists, make sure it's a time
-   if "finish" in event:
-      # Either parse the start string to a valid date time or return the current date at midnight
-      dt = dateutil.parse(event["finish"])
-      # Parse back to ISO 8601 string
-      event["finish"] = dt.strftime("%Y-%m-%d %H:%M:%S %z")
-   if "comment" in event:
-      try:
-         event["confidence"] = str(event["confidence"])
-      except:
-         raise ValueError("comment could not be parsed into string")
-   return event
-
-
-# TAKES: An edge event
-# DOES: Validates the event
-# RETURNS: event if validated or ValueError if not
-def validateEdge(event):
-   # Check for required source property
-   if "source" not in event:
-      raise ValueError("No source property in edge")
-   # Check for required target property
-   if "target" not in event:
-      raise ValueError("No target property in edge")
-   # Check for required relationship property
-   if "relationship" not in event:
-      raise ValueError("No relationship property in edge")
-   if event["relationship"] not in ["describes", "leads to"]:
-      raise ValueError("Relationship not one of the two required values")
-   if "directed" in event:
-      if event["directed"] != True:
-         raise ValueError("Edge is explicitly undirected.")
-   else:
-      event["directed"] = True
-   if "confidence" in event:
-      try:
-         event["confidence"] = int(event["confidence"])
-      except:
-         raise ValueError("Confidence cannot be parsed to int")
-      if (event["confidence"] > 100) or (event["confidence"] < 0):
-         raise ValueError("Confidence value is out of range 0-100")
-   if "comment" in event:
-      try:
-         event["confidence"] = str(event["confidence"])
-      except:
-         raise ValueError("comment could not be parsed into string")
-   return event
