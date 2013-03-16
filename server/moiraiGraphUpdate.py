@@ -48,9 +48,9 @@ import logging
 # TAKES: A py2neo graph object and an "ae" dictionary
 # DOES: Validates the edge (maybe sprucing up the properties)
 # DOES: add the edge
-# RETURNS: a dictionary with key of origin ID and value of DB ID
+# RETURNS: an updated "ae" dictionary with the originid added as a property
 def ae_handler(graph_db, event):
-   IDs = {}
+   updatedAE = {}
    for edge in event:
       logging.info("Adding Edge %s" % edge)
       # Ensure the edge has the required properties
@@ -69,21 +69,23 @@ def ae_handler(graph_db, event):
                relationship = "leads to"
             # Create the actual edge
             e = graph_db.get_or_create_relationships((source, relationship, target, event[edge]))
-            IDs[edge] = e[0].id
+            # Store the updated edges to return
+            updatedAE[e[0].id] = event[edge]
+            updatedAE[e[0].id]["originid"] = edge
          except:
             logging.error("Edge %s properties did not validate and will not be added") % edge
       else:
          logging.error("Edge %s property values did not validate and will not be added") % edge
-   return IDs
+   return updatedAE
 
 
 # TAKES: A py2neo graph object and an "an" dictionary
 # DOES: Validates the node (maybe sprucing up the properties)
 # DOES: add the node
-# RETURNS: a dictionary with key of origin ID and value of DB ID
+# RETURNS: An updated "an" dictionary
 def an_handler(graph_db, event):
    print "Starting to add the node" # debug
-   IDs = {}
+   updatedAN = {}
    for node in event:
       logging.info("Adding Node %s" % node) #debug
       # Make sure the node has the correct properties
@@ -93,21 +95,24 @@ def an_handler(graph_db, event):
             event[node] = validateEdgeProperties(event[node])
             # TODO: Compare the node to nodes already in the graph and combine it if they already exist
             n = graph_db.create(event[node]) # ignores ID passed in
-            IDs[node] = n[0].id
+            # add the node to the AN dictionary and add the originid as a property
+            updatedAN[n[0].id] = event[node]
+            updatedAN[n[0].id]["originid"] = node
          except:
             logging.error("Node %s properties did not validate and will not be added") % node
       else:
          logging.error("Node %s property values did not validate and will not be added") % node
 #   print "Done adding the node" # debug
-   return IDs
+   return updatedAN
 
 
 # TAKES: A py2neo graph object and an "ce" dictionary
 # DOES: Validates the edge (maybe sprucing up the properties)
 # DOES: looks the edge up by source/target and adds the supplied properties dictionary
-# RETURNS: nothing
+# RETURNS: Updated "ce" dictionary
 def ce_handler(graph_db, event):
    query = "START a=node({A}), b=node({B}) MATCH a-[r]->b RETURN r;"
+   updatedCE = {}
    for edge in event:
       logging.info("Changing Edge %s" % edge) #debug
       # Make sure the edge has a source and target
@@ -121,10 +126,14 @@ def ce_handler(graph_db, event):
             e, meta = cypher.execute(graph_db, query, params)
             # Set the first edge in the list of current edges to the new properties
             e[0][0].update_properties(event[edge])
+            # Store the updated edges to return
+            updatedCE[e[0][0].id] = event[edge]
+            updatedCE[e[0][0].id]["originid"] = edge
          except:
             logging.error("Edge %s properties did not validate and will not be added") % edge
       else:
          logging.error("Edge %s property values did not validate and will not be added") % edge
+   return updatedCE
 
 
 # TAKES: A py2neo graph object and an "cn" dictionary
@@ -132,8 +141,9 @@ def ce_handler(graph_db, event):
 # DOES: looks the edge up by node id and adds the supplied properties dictionary
 # RETURNS: nothing
 def cn_handler(graph_db, event):
+   updatedCN = {}
    for node in event:
-      logging.info("CHanging Node %s" % node) #debug
+      logging.info("Changing Node %s" % node) #debug
       try:
          # Make sure the properties have appropriate values
          event[node] = validateEdgeProperties(event[node])
@@ -141,15 +151,20 @@ def cn_handler(graph_db, event):
          n = graph_db.get_node(node)
          # Update the properties
          n.update_properties(event[node])
+         # add the node to the AN dictionary and add the originid as a property
+         updatedCN[n[0].id] = event[node]
+         updatedCN[n[0].id]["originid"] = node
       except:
          logging.error("Node %s properties did not validate and will not be added") % node
+   return updatedCN
 
 
 
 # TAKES: A py2neo graph object and a de event dictionary
 # DOES: Identifies the edge by source/target and deletes it
-# RETURNS: Nothing
+# RETURNS: An updated de dictionary
 def de_handler(graph_db, event):
+   updatedDE = {}
    # Set the query to find the edge
    query = "START a=node({A}), b=node({B}) MATCH a-[r]->b RETURN r;"
    for edge in event:
@@ -158,17 +173,23 @@ def de_handler(graph_db, event):
       if ("source" not in event[edge]) and ("target" not in event[edge]):
          params = {"A": event[edge]["source"], "B": event[edge]["target"]}
          e, meta = cypher.execute(graph_db, query, params)
-         logging.info("Deleting edge %s" % e[0][0) # DEBUG
-         e[0][0].delete()
+         # populate the updated de dictionary.
+         updatedDE[e[0][0].id] = event[edge]
+         updatedDE[e[0][0].id]["originid"] = edge
+         logging.info("Deleting edge %s" % e[0][0].id) # DEBUG
+         # delete the edge
+         e[0][0].delete()    
       else:
          logging.error("Edge Delete missing source/target necessary to delete it.")
-
+   return updatedDE
 
 # TAKES: A py2neo graph object and a dn event dictionary
 # DOES: Identifies the node by id and deletes it
 # DOES: Deletes edges attached to the node
-# RETURNS: Nothing
+# RETURNS: An updated dictionary with both a DN and DE dictionary
 def dn_handler(graph_db, event):
+   updateDN = {}
+   updateDE = {}
    for node in event:
       logging.info("Deleting Node %s" % node) #debug
       # Find the node and it's edges
@@ -177,17 +198,24 @@ def dn_handler(graph_db, event):
       child_edges = n.get_relationships(1)
       # Delete the edges
       for edge in parent_edges:
+         updatedDE[edge.id] = edge.get_properties()
          edge.delete()
       for edge in child_edges:
+         updatedDE[edge.id] = edge.get_properties()
          edge.delete()
+      # Update the DN dictionary
+      updatedDN[n[0].id] = event[node]
+      updatedDN[n[0].id]["originid"] = node
       # Delete the node
       n.delete()
+   return {"dn":updatedDN, "de":updatedDE}
 
 
 # TAKES: A py2neo graph object and a re event dictionary
 # DOES: Identifies the edge by source/target and replaces it's properties
-# RETURNS: Nothing
+# RETURNS: An updated "re" dictionary
 def re_handler(graph_db, event):
+   updatedRE = {}
    query = "START a=node({A}), b=node({B}) MATCH a-[r]->b RETURN r;"
    for edge in event:
       logging.info("Replacing Edge %s" % edge)
@@ -201,16 +229,21 @@ def re_handler(graph_db, event):
             e, meta = cypher.execute(graph_db, query, params)
             # Replace it's properties
             e[0][0].set_properties(event[edge])
+            # populate the updated de dictionary.
+            updatedRE[e[0][0].id] = event[edge]
+            updatedRE[e[0][0].id]["originid"] = edge
          except:
             logging.error("Edge %s properties did not validate and will not be added") % edge
       else:
          logging.error("Edge %s property values did not validate and will not be added") % edge
+   return updatedRE
 
 
 # TAKES: A py2neo graph object and a rn event dictionary
 # DOES: Identifies the node by id and replaces it's properties
 # RETURNS: Nothing
 def rn_handler(graph_db, event):
+   updatedRN = {}
    for node in event:
       logging.info("Replace Node %s" % node) #debug
       # Make sure the node has the correct properties
@@ -221,10 +254,14 @@ def rn_handler(graph_db, event):
             # Get the node, replace it's properties
             n = graph_db.get_node(edge)
             n.set_properties(event[edge])
+            # Update the DN dictionary
+            updatedRN[n[0].id] = event[node]
+            updatedRN[n[0].id]["originid"] = node
          except:
             logging.error("Node %s properties did not validate and will not be added") % node
       else:
          logging.error("Node %s property values did not validate and will not be added") % node
+   return updatedRN
 
 
 # TAKES: A node property dictionary
@@ -349,51 +386,39 @@ def validateEdgeProperties(properties):
 # DOES: adds the event to the graph
 # RETURNS: the event as in the graph (replaced IDs)
 # NOTE: Any nodes or edges that fail to validate will not be added and an error logged, but processing will continue
+# NOTE: CALL THIS
 def addDcesEvent(graph_db, event):
    # Add 'and "DCES_VERSION" in event' to below to check that message
    #   is actually a DCES message, (in case other graph messase are used)
    updatedEvent = {} # empty dictionary for the updated Event
    if "ae" in event: # handle add edge
-      # Add the edge tot he neo4j database
-      IDs = ae_handler(graph_db,event["ae"])
-      # rewrite the event to use the DBID instead of the originID
-      updatedEvent["ae"] = {}
-      for originID in IDs:
-         updatedEvent["ae"][IDs[originID]] = event["ae"][originID]
-         # Add the origin ID to the DCES record just for reference
-         updatedEvent["ae"][IDs[originID]]["originID"] = originID
+      # Add the edge to the neo4j database
+      updatedEvent["ae"] = ae_handler(graph_db,event["ae"])
    if "an" in event: # handle add node
       # Add the node to the neo4j database
-      IDs = an_handler(graph_db,event["an"])
-      # rewrite the event to use the DBID instead of the originID
-      updatedEvent["an"] = {}
-      for originID in IDs:
-         updatedEvent["an"][IDs[originID]] = event["an"][originID]
-         # Add the origin ID to the DCES record just for reference
-         updatedEvent["an"][IDs[originID]]["originID"] = originID
+      updatedEvent["an"] =  an_handler(graph_db,event["an"])      
    if "ce" in event: # handle change edge
-      ce_handler(graph_db,event["ce"])
-      # Add the ce DCES records to the updated event
-      updatedEvent["ce"] = event["ce"]
+      updatedEvent["ce"] = ce_handler(graph_db,event["ce"])
    if "cn" in event: # handle change node
-      cn_handler(graph_db,event["cn"])
-      # Add the cn DCES records to the updated event
-      updatedEvent["cn"] = event["cn"]
+      updatedEvent["cn"] = cn_handler(graph_db,event["cn"])
    if "de" in event: # handle delete edge
-      de_handler(graph_db,event["de"])
-      # Add the de DCES records to the updated event
-      updatedEvent["de"] = event["de"]
+      updatedEvent["de"] = de_handler(graph_db,event["de"])
    if "dn" in event: # handle delete node
-      dn_handler(graph_db,event["dn"])
+      updatedDEDN = dn_handler(graph_db,event["dn"])
+      # Add the DN dictionary to the updated event
+      updatedEvent["dn"] = updatedDEDN["dn"]
+      # If the DE dictionary doesn't exist, create it
+      if "de" not in updatedEvent:
+         updatedEvent["de"] = {}
+      # Copy the deleted edges into the de dictionary
+      for edge in updatedDEDN["de"]:
+         updatedEvent["de"][edge] = updatedDEDN["de"][edge]
       # Add the dn DCES records to the updated event
       updatedEvent["dn"] = event["dn"]
    if "re" in event: # handle replace edge
-      re_handler(graph_db,event["re"])
-      # Add the re DCES records to the updated event
-      updatedEvent["re"] = event["re"]
+      updatedEvent["re"] = re_handler(graph_db,event["re"])
    if "rn" in event: # handle replace node
-      moirai.rn_handler(graph_db,event["rn"])
-      # Add the rn DCES records to the updated event
-      updatedEvent["rn"] = event["rn"]
-   print "ok, publishing updated event %s" % updatedEvent
+      updatedEvent["rn"] = rn_handler(graph_db,event["rn"])
+   logging.info("ok, publishing updated event %s" % updatedEvent)
    return updatedEvent
+
