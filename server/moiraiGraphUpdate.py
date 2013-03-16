@@ -21,6 +21,9 @@
 
 ### INCLUDES ###
 
+# Imported to parse the date
+from dateutil import parser
+import datetime
 
 # For Neo4J integration
 from py2neo import neo4j, cypher
@@ -204,6 +207,95 @@ def addDcesEvent(graph_db, event):
    print "ok, publishing updated event %s" % updatedEvent
    return updatedEvent
 
+# TAKES: A single node property dictionary
+# DOES: Validates the event
+# RETURNS: event if valid and raises ValueError if invalid
+def validateNode(event):
+   # check event for required property 'class'
+   if "class" not in event:
+      raise ValueError("event missing required class property")
+   # check class for required types
+   if event["class"] not in ["event", "attribute", "condition"]:
+      raise ValueError("class property is not allowed types of event, attribute, condition")
+   # events and conditions need to have labels
+   if event["class"] in ["event"], "condition"]:
+      if "label" not in event:
+         raise ValueError("event or condition clas node missing label property")
+   # attributes need to have metadata
+   else:
+      if "metadata" not in event:
+         raise ValueError("no metadata property in attribute event")
+      else:
+         # metadata needs to be a dictionary string
+         if type(event["metadata"]) == dict:
+            pass
+         # try and parse the metadata, if we can't return false
+         else:
+            try:
+               event["metadata"] = json.loads(event["metadata"])
+            except:
+               raise ValueError("metadata property not parsable")
+         # pull one type:value pair out of metadata, convert to string, & save back to metadata
+         for key in event["metadata"]:
+            tmp = {}
+            tmp[key] = event["metadat"][key]
+            event["metadata"] = json.loads(tmp) 
+            # end after 1.  We're only keeping 1 pieces of metadata
+            break      
+   # check event for require property 'cpt'
+   if "cpt" not in event:
+      raise ValueError('No cpt property')
+   # check event for required property 'start'
+   elif "start" not in event:
+      raise ValueError('No start property')
+   # Either parse the start string to a valid date time or return the current date at midnight
+   dt = dateutil.parse(event["start"])
+   # Parse back to ISO 8601 string
+   event["start"] = dt.strftime("%Y-%m-%d %H:%M:%S %z")
+   # If finish exists, make sure it's a time
+   if "finish" in event:
+      # Either parse the start string to a valid date time or return the current date at midnight
+      dt = dateutil.parse(event["finish"])
+      # Parse back to ISO 8601 string
+      event["finish"] = dt.strftime("%Y-%m-%d %H:%M:%S %z")
+   if "comment" in event:
+      try:
+         event["confidence"] = str(event["confidence"])
+      except:
+         raise ValueError("comment could not be parsed into string")
+   return event
 
 
-
+# TAKES: An edge event
+# DOES: Validates the event
+# RETURNS: event if validated or ValueError if not
+def validateEdge(event):
+   # Check for required source property
+   if "source" not in event:
+      raise ValueError("No source property in edge")
+   # Check for required target property
+   if "target" not in event:
+      raise ValueError("No target property in edge")
+   # Check for required relationship property
+   if "relationship" not in event:
+      raise ValueError("No relationship property in edge")
+   if event["relationship"] not in ["describes", "leads to"]:
+      raise ValueError("Relationship not one of the two required values")
+   if "directed" in event:
+      if event["directed"] != True:
+         raise ValueError("Edge is explicitly undirected.")
+   else:
+      event["directed"] = True
+   if "confidence" in event:
+      try:
+         event["confidence"] = int(event["confidence"])
+      except:
+         raise ValueError("Confidence cannot be parsed to int")
+      if (event["confidence"] > 100) or (event["confidence"] < 0):
+         raise ValueError("Confidence value is out of range 0-100")
+   if "comment" in event:
+      try:
+         event["confidence"] = str(event["confidence"])
+      except:
+         raise ValueError("comment could not be parsed into string")
+   return event
