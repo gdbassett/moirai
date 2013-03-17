@@ -18,11 +18,11 @@ help: <a string, URL, or other location where information on the RPC function, a
 Graph Standard:
 -all property names must be lower case
 -Nodes must have the following properties:
---"class": May be "threat", "event", "condition", "attribute"
+--"class": May be "actor", "event", "condition", "attribute"
 --"cpt": must be a JSON string in the format defined at http://infosecanalytics.blogspot.com/2013/03/conditional-probability-tables-in-json.html
 --"start": The time the node is created. Time should be in ISO 8601 combined date and time format (e.g. 2013-03-14T16:57Z)
 --"ID": Assigned by database.  
--Nodes of "class" "event or "condition" must have property "label" containing a string holding a narrative describing the event/condition
+-Nodes of "class" "actor", "event, or "condition" must have property "label" containing a string holding a narrative describing the actor, event, or condition
 -Nodes of "class" "attribute" must have a property "metadata" containing a JSON formatted string with a single "{'type':'value'} pair.  Value is the name of the attribute and value the value.
 -Nodes of "class" "attribute" with property "label" will have said property ignored.  If a narrative is appropriate for the attribute, it should be stored in the metadata property.
 -Nodes of any class MAY have property "comments" providing additional narrative on the node

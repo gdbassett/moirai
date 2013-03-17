@@ -273,7 +273,7 @@ def validateNode(properties):
 #      raise ValueError("event missing required class property")
       return False
    # events and conditions need to have labels
-   if properties["class"] in ["event", "condition"]:
+   if properties["class"] in ["actor", "event", "condition"]:
       if "label" not in properties:
 #         raise ValueError("event or condition clas node missing label property")
          return False
@@ -299,7 +299,7 @@ def validateNode(properties):
 def validateNodeProperties(properties):
    # check class for required types
     if "class" in properties:
-        if properties["class"] not in ["event", "attribute", "condition"]:
+        if properties["class"] not in ["actor", "event", "attribute", "condition"]:
               raise ValueError("class property is not allowed types of event, attribute, condition")
     if "metadata" in properties:
         # metadata needs to be a dictionary string
@@ -314,7 +314,7 @@ def validateNodeProperties(properties):
         # pull one type:value pair out of metadata, convert to string, & save back to metadata
         for key in properties["metadata"]:
            tmp = {}
-           tmp[key] = properties["metadat"][key]
+           tmp[key] = properties["metadata"][key]
            properties["metadata"] = json.loads(tmp) 
            # end after 1.  We're only keeping 1 pieces of metadata
            break      
@@ -382,6 +382,32 @@ def validateEdgeProperties(properties):
    return properties
 
 
+# TAKES: a dictionary with "ae"s anchored to originIds and dbId anchored "an"'s in it
+# DOES: anchors "ae"s to dbIds
+# RETURNS: dictionary of dbId anchored "ae"s
+def fixEdges(event):
+   aeEvents = event["ae"]
+   anEvents = event["an"]
+   for edge in aeEvents:
+      sourceFound = False
+      targetFound = False
+      if ("source" in edge) and ("target" in edge):
+         for node in anEvents:
+            # if a node existed
+            if aeEvents[edge]["source"] == anEvents[node]["originid"]:
+               aeEvents[edge]["originsourceid"] = aeEvents[edge]["source"]
+               aeEvents[edge]["source"] = node
+               sourceFound = True
+            if aeEvents[edge]["target"] == anEvents[node]["originid"]:
+               aeEvents[edge]["origintargetid"] = aeEvents[edge]["target"]
+               aeEvents[edge]["target"] = node
+               targetFound = True
+      if (targetFound != True) or (sourceFound != True):
+         logging.error("Edge was not anchored to any origin nodes in the Event.  Edge will be removed.")
+         del aeEvents[edge] 
+   return aeEvents
+
+
 # TAKES: the graph and event
 # DOES: adds the event to the graph
 # RETURNS: the event as in the graph (replaced IDs)
@@ -396,8 +422,11 @@ def addDcesEvent(graph_db, event):
       # Add the node to the neo4j database
       updatedEvent["an"] =  an_handler(graph_db,event["an"])      
    if "ae" in event: # handle add edge
+      # If nodes were added, make sure edges are referenced to originId
+      if "ae" in updatedEvents:
+         fixedEdges = fixEdges(event["ae"])
       # Add the edge to the neo4j database
-      updatedEvent["ae"] = ae_handler(graph_db,event["ae"])
+      updatedEvent["ae"] = ae_handler(graph_db,fixedEdges)
    # the order of 'ce/cn's shouldn't matter since they are referenced to dbIds
    if "ce" in event: # handle change edge
       updatedEvent["ce"] = ce_handler(graph_db,event["ce"])
