@@ -40,8 +40,7 @@ import logging
 
 ### Set Environment ###
 
-# Hack to enable logging
-logging.basicConfig(level=logging.DEBUG)
+
 
 ### CLASS AND METHOD DEFINITIONS #### 
 
@@ -74,9 +73,9 @@ def ae_handler(graph_db, event):
             updatedAE[e[0].id] = event[edge]
             updatedAE[e[0].id]["originid"] = edge
          except:
-            logging.error("Edge %s properties did not validate and will not be added" % edge)
+            logging.error("Edge %s properties did not validate and will not be added") % edge
       else:
-         logging.error("Edge %s property values did not validate and will not be added" % edge)
+         logging.error("Edge %s property values did not validate and will not be added") % edge
    return updatedAE
 
 
@@ -100,9 +99,9 @@ def an_handler(graph_db, event):
             updatedAN[n[0].id] = event[node]
             updatedAN[n[0].id]["originid"] = node
          except:
-            logging.error("Node %s properties did not validate and will not be added" % node)
+            logging.error("Node %s properties did not validate and will not be added") % node
       else:
-         logging.error("Node %s property values did not validate and will not be added" % node)
+         logging.error("Node %s property values did not validate and will not be added") % node
 #   print "Done adding the node" # debug
    return updatedAN
 
@@ -131,9 +130,9 @@ def ce_handler(graph_db, event):
             updatedCE[e[0][0].id] = event[edge]
             updatedCE[e[0][0].id]["originid"] = edge
          except:
-            logging.error("Edge %s properties did not validate and will not be added" % edge)
+            logging.error("Edge %s properties did not validate and will not be added") % edge
       else:
-         logging.error("Edge %s property values did not validate and will not be added" % edge)
+         logging.error("Edge %s property values did not validate and will not be added") % edge
    return updatedCE
 
 
@@ -156,7 +155,7 @@ def cn_handler(graph_db, event):
          updatedCN[n[0].id] = event[node]
          updatedCN[n[0].id]["originid"] = node
       except:
-         logging.error("Node %s properties did not validate and will not be added" % node)
+         logging.error("Node %s properties did not validate and will not be added") % node
    return updatedCN
 
 
@@ -234,9 +233,9 @@ def re_handler(graph_db, event):
             updatedRE[e[0][0].id] = event[edge]
             updatedRE[e[0][0].id]["originid"] = edge
          except:
-            logging.error("Edge %s properties did not validate and will not be added" % edge)
+            logging.error("Edge %s properties did not validate and will not be added") % edge
       else:
-         logging.error("Edge %s property values did not validate and will not be added" % edge)
+         logging.error("Edge %s property values did not validate and will not be added") % edge
    return updatedRE
 
 
@@ -259,9 +258,9 @@ def rn_handler(graph_db, event):
             updatedRN[n[0].id] = event[node]
             updatedRN[n[0].id]["originid"] = node
          except:
-            logging.error("Node %s properties did not validate and will not be added" % node)
+            logging.error("Node %s properties did not validate and will not be added") % node
       else:
-         logging.error("Node %s property values did not validate and will not be added" % node)
+         logging.error("Node %s property values did not validate and will not be added") % node
    return updatedRN
 
 
@@ -274,12 +273,12 @@ def validateNode(properties):
 #      raise ValueError("event missing required class property")
       return False
    # events and conditions need to have labels
-   if properties["class"] in ["actor", "event", "condition"]:
+   if properties["class"] in ["event", "condition"]:
       if "label" not in properties:
 #         raise ValueError("event or condition clas node missing label property")
          return False
    # attributes need to have metadata
-   elif properties["class"] is "attribute":
+   elsif properties["class"] is "attribute":
       if "metadata" not in properties:
 #         raise ValueError("no metadata property in attribute event")   
          return False
@@ -299,26 +298,26 @@ def validateNode(properties):
 # RETURNS: event property dictionary if validated or ValueError if not
 def validateNodeProperties(properties):
    # check class for required types
-   if "class" in properties:
-      if properties["class"] not in ["actor", "event", "attribute", "condition"]:
-         raise ValueError("class property is not allowed types of event, attribute, condition")
-   if "metadata" in properties:
-      # metadata needs to be a dictionary string
-      if type(event["metadata"]) == dict:
-         pass
-      # try and parse the metadata, if we can't return false
-      else:
-         try:
-            properties["metadata"] = json.loads(properties["metadata"])
-         except:
-            raise ValueError("metadata property not parsable")
-      # pull one type:value pair out of metadata, convert to string, & save back to metadata
-      for key in properties["metadata"]:
-         tmp = {}
-         tmp[key] = properties["metadata"][key]
-         properties["metadata"] = json.loads(tmp) 
-         # end after 1.  We're only keeping 1 pieces of metadata
-         break      
+    if "class" in properties:
+        if properties["class"] not in ["event", "attribute", "condition"]:
+              raise ValueError("class property is not allowed types of event, attribute, condition")
+    if "metadata" in properties:
+        # metadata needs to be a dictionary string
+        if type(event["metadata"]) == dict:
+           pass
+        # try and parse the metadata, if we can't return false
+        else:
+           try:
+              properties["metadata"] = json.loads(properties["metadata"])
+           except:
+              raise ValueError("metadata property not parsable")
+        # pull one type:value pair out of metadata, convert to string, & save back to metadata
+        for key in properties["metadata"]:
+           tmp = {}
+           tmp[key] = properties["metadat"][key]
+           properties["metadata"] = json.loads(tmp) 
+           # end after 1.  We're only keeping 1 pieces of metadata
+           break      
    # check event for required property 'start'
    if "start" in properties:
        dt = dateutil.parse(properties["start"])
@@ -335,12 +334,6 @@ def validateNodeProperties(properties):
          properties["confidence"] = str(event["confidence"])
       except:
          raise ValueError("comment could not be parsed into string")
-   # A basic validation of the cpt to make sure it can be 'stringed'
-   if "cpt" in properties:
-      try:
-         properties["cpt"] = str(properties["cpt"])
-      except:
-         raise ValueError("CPT cannot be turned into a string")
    return properties
 
 
@@ -389,30 +382,16 @@ def validateEdgeProperties(properties):
    return properties
 
 
-# TAKES: a dictionary with "ae"s anchored to originIds and dbId anchored "an"'s in it
-# DOES: anchors "ae"s to dbIds
-# RETURNS: dictionary of dbId anchored "ae"s
+# TAKES: A dictionary with "ae" and "an" dictionaries in it
+# DOES: Replaces originIds with dbIds in the "ae"s
+# RETURNS: the AE dictionary
 def fixEdges(event):
-   aeEvents = event["ae"]
-   anEvents = event["an"]
-   for edge in aeEvents:
-      sourceFound = False
-      targetFound = False
-      if ("source" in edge) and ("target" in edge):
-         for node in anEvents:
-            # if a node existed
-            if aeEvents[edge]["source"] == anEvents[node]["originid"]:
-               aeEvents[edge]["originsourceid"] = aeEvents[edge]["source"]
-               aeEvents[edge]["source"] = node
-               sourceFound = True
-            if aeEvents[edge]["target"] == anEvents[node]["originid"]:
-               aeEvents[edge]["origintargetid"] = aeEvents[edge]["target"]
-               aeEvents[edge]["target"] = node
-               targetFound = True
-      if (targetFound != True) or (sourceFound != True):
-         logging.error("Edge was not anchored to any origin nodes in the Event.  Edge will be removed.")
-         del aeEvents[edge] 
-   return aeEvents
+   aeEvent = event["ae"]
+   anEvent = event["an"]
+   for edge in aeEvent:
+      if ("source" in 
+      # magic happens
+   return aeEvent
 
 
 # TAKES: the graph and event
@@ -429,11 +408,11 @@ def addDcesEvent(graph_db, event):
       # Add the node to the neo4j database
       updatedEvent["an"] =  an_handler(graph_db,event["an"])      
    if "ae" in event: # handle add edge
-      # If nodes were added, make sure edges are referenced to originId
-      if "ae" in updatedEvents:
-         fixedEdges = fixEdges(event["ae"])
+      # if nodes were added, fix them in the edges dictaionary
+      if "an" in updatedEvent:
+         anFixed = fixEdges({"an":updatedEvent["an"],"ae":event["ae"]})
       # Add the edge to the neo4j database
-      updatedEvent["ae"] = ae_handler(graph_db,fixedEdges)
+      updatedEvent["ae"] = ae_handler(graph_db,anFixed)
    # the order of 'ce/cn's shouldn't matter since they are referenced to dbIds
    if "ce" in event: # handle change edge
       updatedEvent["ce"] = ce_handler(graph_db,event["ce"])

@@ -138,7 +138,7 @@ class MyTopicService:
       """
       Custom topic publication handler.
       """
-      print "client wants to publish to %s%s" % (topicUriPrefix, topicUriSuffix)
+      print "client wants to publish %s to %s%s" % (event, topicUriPrefix, topicUriSuffix)
 #      print "event dir is %s" % event # DEBUG
       try:
          i = int(topicUriSuffix)
@@ -265,9 +265,11 @@ class MyTopicService:
             if resp.length > 0: # something matched
                # TODO: change the nodeID to the dbNodeID
                # TODO: change the nodeID in all edges in construct to dbNodeID
+               pass # DEBUG
             else: # nothing matched
                # TODO: add node to graph
                # TODO: change the nodeID in all edges in construct to dbNodeId
+               pass # DEBUG
       elif "ae" in DCES_event:
          # Assumed at this point all edges have dbNodeIds from previous step.
          IDs = moirai.ae_handler(graph_db,DCES_event["ae"])
