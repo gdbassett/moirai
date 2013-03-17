@@ -391,16 +391,19 @@ def addDcesEvent(graph_db, event):
    # Add 'and "DCES_VERSION" in event' to below to check that message
    #   is actually a DCES message, (in case other graph messase are used)
    updatedEvent = {} # empty dictionary for the updated Event
-   if "ae" in event: # handle add edge
-      # Add the edge to the neo4j database
-      updatedEvent["ae"] = ae_handler(graph_db,event["ae"])
+   # "an" must be processed first because AEs may link to ANs
    if "an" in event: # handle add node
       # Add the node to the neo4j database
       updatedEvent["an"] =  an_handler(graph_db,event["an"])      
+   if "ae" in event: # handle add edge
+      # Add the edge to the neo4j database
+      updatedEvent["ae"] = ae_handler(graph_db,event["ae"])
+   # the order of 'ce/cn's shouldn't matter since they are referenced to dbIds
    if "ce" in event: # handle change edge
       updatedEvent["ce"] = ce_handler(graph_db,event["ce"])
    if "cn" in event: # handle change node
       updatedEvent["cn"] = cn_handler(graph_db,event["cn"])
+   # edges need to be deleted first, otherwise they could get duplcate deletes since the 'dn' can delete edges
    if "de" in event: # handle delete edge
       updatedEvent["de"] = de_handler(graph_db,event["de"])
    if "dn" in event: # handle delete node
@@ -415,6 +418,7 @@ def addDcesEvent(graph_db, event):
          updatedEvent["de"][edge] = updatedDEDN["de"][edge]
       # Add the dn DCES records to the updated event
       updatedEvent["dn"] = event["dn"]
+   # the order of 're/rn's shouldn't matter since they are referenced to dbIds   
    if "re" in event: # handle replace edge
       updatedEvent["re"] = re_handler(graph_db,event["re"])
    if "rn" in event: # handle replace node
