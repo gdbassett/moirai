@@ -123,7 +123,7 @@ def ce_handler(graph_db, event):
    for edge in event:
       logging.info("Changing Edge %s" % edge) #debug
       # Make sure the edge has a source and target
-      if ("source" not in event[edge]) and ("target" not in event[edge]):
+      if ("source" in event[edge]) and ("target" in event[edge]):
          try:
             # Ensure that the properties have the correct values
             event[edge] = validateEdgeProperties(event[edge])
@@ -154,14 +154,15 @@ def cn_handler(graph_db, event):
       logging.info("Changing Node %s" % node) #debug
       try:
          # Make sure the properties have appropriate values
-         event[node] = validateEdgeProperties(event[node])
+         event[node] = validateNodeProperties(event[node])
          # Find the current node
          n = graph_db.get_node(node)
+         logging.debug(n)
          # Update the properties
          n.update_properties(event[node])
          # add the node to the AN dictionary and add the originid as a property
-         updatedCN[n[0].id] = event[node]
-         updatedCN[n[0].id]["originid"] = node
+         updatedCN[n.id] = event[node]
+         updatedCN[n.id]["originid"] = node
       except Exception as inst:
          logging.error(inst)
          logging.error("Node %s properties did not validate and will not be added" % node)
@@ -179,7 +180,7 @@ def de_handler(graph_db, event):
    for edge in event:
       logging.info("Deleting edge %s" % edge) #debug
       # Make sure the edge has a source and target
-      if ("source" not in event[edge]) and ("target" not in event[edge]):
+      if ("source" in event[edge]) and ("target" in event[edge]):
          params = {"A": event[edge]["source"], "B": event[edge]["target"]}
          e, meta = cypher.execute(graph_db, query, params)
          # populate the updated de dictionary.
@@ -205,16 +206,23 @@ def dn_handler(graph_db, event):
       n = graph_db.get_node(node)
       parent_edges = n.get_relationships(0)
       child_edges = n.get_relationships(1)
+      logging.debug("Parents are %s and children are %s" % (parent_edges, child_edges))
       # Delete the edges
       for edge in parent_edges:
+         logging.info("Deleting Edge %s" % edge)
          updatedDE[edge.id] = edge.get_properties()
          edge.delete()
+         # since getting parents is getting all edges
+         if edge in child_edges:
+            child_edges.remove(edge)
       for edge in child_edges:
+         logging.info("Deleting Edge %s" % edge)
          updatedDE[edge.id] = edge.get_properties()
          edge.delete()
+      logging.debug("Done deleting edges of %s" % n.id)
       # Update the DN dictionary
-      updatedDN[n[0].id] = event[node]
-      updatedDN[n[0].id]["originid"] = node
+      updatedDN[n.id] = event[node]
+      updatedDN[n.id]["originid"] = node
       # Delete the node
       n.delete()
    return {"dn":updatedDN, "de":updatedDE}
@@ -260,13 +268,13 @@ def rn_handler(graph_db, event):
       if validateNode(event[node]):
          try:
             # Make sure the properties have appropriate values
-            event[node] = validateEdgeProperties(event[node])
+            event[node] = validateNodeProperties(event[node])
             # Get the node, replace it's properties
-            n = graph_db.get_node(edge)
-            n.set_properties(event[edge])
+            n = graph_db.get_node(node)
+            n.set_properties(event[node])
             # Update the DN dictionary
-            updatedRN[n[0].id] = event[node]
-            updatedRN[n[0].id]["originid"] = node
+            updatedRN[n.id] = event[node]
+            updatedRN[n.id]["originid"] = node
          except Exception as inst:
             logging.error(inst)
             logging.error("Node %s properties did not validate and will not be added" % node)
@@ -374,8 +382,9 @@ def validateEdge(properties):
 # RETURNS: event property dictionary if validated or ValueError if not
 def validateEdgeProperties(properties):
    # Check for required relationship property
-   if properties["relationship"] not in ["describes", "leads to"]:
-      raise ValueError("Relationship not one of the two required values")
+   if "relationship" in properties:
+      if properties["relationship"] not in ["describes", "leads to"]:
+         raise ValueError("Relationship not one of the two required values")
    if "directed" in properties:
       if properties["directed"] != True:
          raise ValueError("Edge is explicitly undirected.")

@@ -105,32 +105,32 @@ class MyClientProtocol(WampClientProtocol):
 
       event4 = {"dces_version":"0.2","dn":{int(idMap["B"]):{}},"de":{"1":{"source":int(idMap["D"]),"target":int(idMap["A"])}}}
       
-      print "AN/AE done.  Press any key to run RN/RE"
-      raw_input()
+#      print "AN/AE done.  Press any key to run RN/RE"
+#      raw_input()
 
       # Run RNs and REs
       print "Publishing RN/REs %s" % event2
       self.publish("moirai:graph1", event2)
 
       # pause
-#      time.sleep(5)
+      time.sleep(5)
 
-      print "RN/RE done.  Press any key to run CN/CE"
-      raw_input()
+#      print "RN/RE done.  Press any key to run CN/CE"
+#      raw_input()
 
       # Run CNs and CEs
       print "Publishing CN/CEs %s" % event3
       self.publish("moirai:graph1", event3)
 
       # pause
-#      time.sleep(5)
+      time.sleep(5)
 
-      print "CN/CE done.  Press any key to run DN/DE."
-      raw_input()
+#      print "CN/CE done.  Press any key to run DN/DE."
+#      raw_input()
 
       # Run DNs and DEs
       print "Publishing DN/DEs %s" % event4
-      self.publish("moirai:graph1", event4, excludeMe=False)
+      self.publish("moirai:graph1", event4)
 
 
 
