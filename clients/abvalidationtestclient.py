@@ -36,13 +36,7 @@ helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -t <topicId
 
 idMap = {"A":"","B":"","C":"","D":"","1":"","2":"","3":""}
 
-event1 = {"dces_version":"0.2","ae":{"1":{"source":"E","target":"A","directed":True, "relationship":"describes","start":"2013-03-14T16:57Z"},"2":{"source":"A","target":"B","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"I'm sure!"},"3":{"source":"B","target":"C","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z"}},"an":{"A":{"label":"haxor","class":"actor","start":"2013-03-14T16:57Z","cpt":{"nodeid":"A","index":["E",True,False],"0":[0,1],"1":[1,0]},"comment":"A youtube educated hacker"},"B":{"label":"Haxors your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"comment":"Uses db_autopwn"},"C":{"label":"Your sites pwnd","class":"condition","start":"2013-03-14T16:57Z","cpt":{"nodeid":"C","index":["B",True,False],"0":[0,1],"1":[1,0]}},"D":{"class":"attribute","metadata":{"skills":"leet"},"start":"2013-03-14T16:57Z","cpt":{"nodeid":"E","index":[True,False],"0":[1,0]}}}}
-
-event2 = {"dces_version":"0.2","re":{"2":{"source":idMap["A"],"target":idMap["B"],"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","confidence":90}},"rn":{idMap["B"]:{"label":"Pays someone else to hack your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"finish":"2013-03-20T16:57Z"},}}
-
-event3 = {"dces_version":"0.2","cn":{idMap["D"]:{"label":"target has leet hacking skills"}},"ce":{"1":{"source":idMap["D"],"target":idMap["A"],"confidence":80}}}
-
-event4 = {"dces_version":"0.2","dn":{idMap["B"]:{}},"de":{"1":{"source":idMap["D"],"target":idMap["A"]}}}
+event1 = {"dces_version":"0.2","ae":{"1":{"source":"D","target":"A","directed":True, "relationship":"describes","start":"2013-03-14T16:57Z"},"2":{"source":"A","target":"B","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"I'm sure!"},"3":{"source":"B","target":"C","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z"}},"an":{"A":{"label":"haxor","class":"actor","start":"2013-03-14T16:57Z","cpt":{"nodeid":"A","index":["E",True,False],"0":[0,1],"1":[1,0]},"comment":"A youtube educated hacker"},"B":{"label":"Haxors your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"comment":"Uses db_autopwn"},"C":{"label":"Your sites pwnd","class":"condition","start":"2013-03-14T16:57Z","cpt":{"nodeid":"C","index":["B",True,False],"0":[0,1],"1":[1,0]}},"D":{"class":"attribute","metadata":{"skills":"leet"},"start":"2013-03-14T16:57Z","cpt":{"nodeid":"D","index":[True,False],"0":[1,0]}}}}
 
 clrGraph = "START n = node(*) MATCH n-[r?]-() DELETE n,r;"
 
@@ -103,7 +97,33 @@ class MyClientProtocol(WampClientProtocol):
       print app_name, topicUri, event
       if "an" in event:
          for node in event["an"]:
-            idMap[event["an"][node][originid]] = node
+            idMap[event["an"][node]["originid"]] = node
+
+      event2 = {"dces_version":"0.2","re":{"2":{"source":idMap["A"],"target":idMap["B"],"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","confidence":90}},"rn":{idMap["B"]:{"label":"Pays someone else to hack your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"finish":"2013-03-20T16:57Z"},}}
+
+      event3 = {"dces_version":"0.2","cn":{idMap["D"]:{"label":"target has leet hacking skills"}},"ce":{"1":{"source":idMap["D"],"target":idMap["A"],"confidence":80}}}
+
+      event4 = {"dces_version":"0.2","dn":{idMap["B"]:{}},"de":{"1":{"source":idMap["D"],"target":idMap["A"]}}}
+
+      # Run RNs and REs
+      print "Publishing RN/REs %s" % event2
+      self.publish("moirai:graph1", event2)
+
+      # pause
+      time.sleep(5)
+
+      # Run CNs and CEs
+      print "Publishing CN/CEs %s" % event3
+      self.publish("moirai:graph1", event3)
+
+      # pause
+      time.sleep(5)
+
+      # Run DNs and DEs
+      print "Publishing DN/DEs %s" % event4
+      self.publish("moirai:graph1", event4, excludeMe=False)
+
+
 
    def onSessionOpen(self):
       print "Session Opened"
@@ -123,32 +143,14 @@ class MyClientProtocol(WampClientProtocol):
       time.sleep(5)
 
       # Publish a small graph using ANs and AEs
-      print "Publishing AN/AEs"
+      print "Publishing AN/AEs %s" % event1
       self.publish("moirai:graph1", event1, excludeMe=False)
 
       # Give the pubsub enough time to send back the event so we can get the dbIDs
       time.sleep(5)
 
-      # Run RNs and REs
-      print "Publishing RN/REs"
-      self.publish("moirai:graph1", event2, excludeMe=False)
-
-      # pause
-      time.sleep(5)
-
-      # Run CNs and CEs
-      print "Publishing CN/CEs"
-      self.publish("moirai:graph1", event3, excludeMe=False)
-
-      # pause
-      time.sleep(5)
-
-      # Run DNs and DEs
-      print "Publishing DN/DEs"
-      self.publish("moirai:graph1", event4, excludeMe=False)
-
       # quit after doing stuff
-      self.done()
+#      self.done()
 
 
 ### Program Execution ###
