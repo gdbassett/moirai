@@ -98,11 +98,12 @@ def an_handler(graph_db, event):
          try:
             # Make sure the properties have appropriate values
             event[node] = validateNodeProperties(event[node])
+            # Add the originid to the event before saving it to the db
+            event[node]["originid"] = node
             # TODO: Compare the node to nodes already in the graph and combine it if they already exist
             n = graph_db.create(event[node]) # ignores ID passed in
             # add the node to the AN dictionary and add the originid as a property
             updatedAN[n[0].id] = event[node]
-            updatedAN[n[0].id]["originid"] = node
          except Exception as inst:
             logging.error(inst)
             logging.error("Node %s properties did not validate and will not be added" % node)

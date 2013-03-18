@@ -99,25 +99,34 @@ class MyClientProtocol(WampClientProtocol):
          for node in event["an"]:
             idMap[event["an"][node]["originid"]] = node
 
-      event2 = {"dces_version":"0.2","re":{"2":{"source":idMap["A"],"target":idMap["B"],"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","confidence":90}},"rn":{idMap["B"]:{"label":"Pays someone else to hack your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"finish":"2013-03-20T16:57Z"},}}
+      event2 = {"dces_version":"0.2","re":{"2":{"source":int(idMap["A"]),"target":int(idMap["B"]),"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","confidence":90}},"rn":{int(idMap["B"]):{"label":"Pays someone else to hack your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"finish":"2013-03-20T16:57Z"},}}
 
-      event3 = {"dces_version":"0.2","cn":{idMap["D"]:{"label":"target has leet hacking skills"}},"ce":{"1":{"source":idMap["D"],"target":idMap["A"],"confidence":80}}}
+      event3 = {"dces_version":"0.2","cn":{int(idMap["D"]):{"label":"target has leet hacking skills"}},"ce":{"1":{"source":int(idMap["D"]),"target":int(idMap["A"]),"confidence":80}}}
 
-      event4 = {"dces_version":"0.2","dn":{idMap["B"]:{}},"de":{"1":{"source":idMap["D"],"target":idMap["A"]}}}
+      event4 = {"dces_version":"0.2","dn":{int(idMap["B"]):{}},"de":{"1":{"source":int(idMap["D"]),"target":int(idMap["A"])}}}
+      
+      print "AN/AE done.  Press any key to run RN/RE"
+      raw_input()
 
       # Run RNs and REs
       print "Publishing RN/REs %s" % event2
       self.publish("moirai:graph1", event2)
 
       # pause
-      time.sleep(5)
+#      time.sleep(5)
+
+      print "RN/RE done.  Press any key to run CN/CE"
+      raw_input()
 
       # Run CNs and CEs
       print "Publishing CN/CEs %s" % event3
       self.publish("moirai:graph1", event3)
 
       # pause
-      time.sleep(5)
+#      time.sleep(5)
+
+      print "CN/CE done.  Press any key to run DN/DE."
+      raw_input()
 
       # Run DNs and DEs
       print "Publishing DN/DEs %s" % event4
