@@ -10,7 +10,7 @@ Moirai is implemented as a pubsub and rpc server in python.  The server provides
 
 
 Dependancies:
-Moirai depends on the py2neo and autobahn python modules.  Additionally, it requires a neo4j database to connect to and store the graph.  There is no facility to run moirai without the neo4j database.
+Moirai depends on the py2neo, autobahn, and python-dateutil python modules.  Additionally, it requires a neo4j database to connect to and store the graph.  There is no facility to run moirai without the neo4j database.
 
 Status:
 Moirai is currently unstable and undergoing active development.  The majority of published clients are only test clients for server functionality.
