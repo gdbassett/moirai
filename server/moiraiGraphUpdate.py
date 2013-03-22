@@ -509,6 +509,7 @@ def updateCPTs(event):
    for node in nodes:
       n = graph_db.get_node(node)
       parents = n.get_related_nodes(direction=-1)
+      numRows = 2**len(parents)-1
       cptObj = json.loads(n["cpt"])
       newCptObj = {}
       newParents = set()
@@ -524,30 +525,91 @@ def updateCPTs(event):
          oldParents.discard(str(parent.id))
       # WHAT: Remove old Parents from CPT
       for parent in oldParents:
+         anyTrue = False
          # get ID of old parent in lists
-         # remove rows where old parent is 0
-         # remove old parent from lists
+         i = cptObj["index"].index(parent.id)
+         # remove rows where old parent is 1
+         for row in range(2**len(parents)-1,-1,-1):
+            if cptObj[row][i] == 1:
+               del cptObj[row]
+            # remove old parent from lists
+            else:
+               cptObj[row].pop(i)
+               # check if row is true (in this case, if false is not 1)
+               if cptObj[row][len(row)-1] != 1:
+                  anyTrue = True
+         cptObj["index"].pop(i)
          # if no rows are true, make the all '1's row true
+         if not AnyTrue:
+            # Set false to 0
+            # we're assuming the last row is all 1's
+            # use index to get row length
+            cptObj[numRows - 1][len(cptObj["index"])-1] = 0
+            # Set true to 1
+            cptObj[numRows - 1][len(cptObj["index"])-2] = 1
+         # Going ot keep parents and numRows up to date.  This may not work
+         parents = n.get_related_nodes(direction=-1)
+         numRows = 2**len(parents)
       
       for parent in newParents:
          # Add newParent to front of index
+         cptObj["index"].insert(0, parent.id)
          # Copy all current columns into new columns w/ sequential #'s
-         # Add "0" at the beginning of the first columns
-         # Add "1" at the beginning of the second columns 
-         # If new parent is an attribute or threat
-         ## make the first half of the rows false
+         for row in range(0, numRows - 1):
+            cptObj[numRows + row] = cptObj[row]
+            # Add "0" at the beginning of the first columns
+            cptObj[row].insert(0, 0)
+            # Add "1" at the beginning of the second columns 
+            cptObj[numRows + row].insert(0,1)
+            # If new parent is an attribute or actor
+            if parent["class"] in ["attribute", "actor"]:
+               ## make the first half of the rows false
+               cptObj[row][len(cptObj["index"])-1] = 1
+               cptObj[row][len(cptObj["index"])-2] = 2
          # Else (implicilty the parent is an event/condition
-         ## Get indexes of attribute/threat parents
-         ## Get indexes of event/condition parents
+         if parent["class"] in ["event", "condition"]:
+            ## Get indexes of attribute/actor parents
+            ## Get indexes of event/condition parents
+            aParents = []
+            ecParents = []
+            for c in range(0,len(cptObj["index"])-3):
+               p = graph_db.get_node(cptObj["index"])
+               if p["class"] is in ["attribute", "actor"]:
+                  aParents.append(p)
+               else: #implicitly events/conditions
+                  ecParents.append(p)
          ## iterating over CPT backwards
-         ### if row is non-false (true to any level)
-         #### Save attr parent state to a list
-         #### pop the event/condition indexes off the list (in reverse order so indexes don't change) (note: true/false will still be on row
-         ### else (implicitly the row is false)
-         #### get attr parent state
-         #### pop the event/conditions off of it
-         #### if row state matches anything in the list of true states (iterate from 0 to size-2 on attr state, comparing value in each list
-         ##### copy the true/false from the true state to the false state
+         trueRows = set()
+         for i in range(numRows - 1, 0):
+            trueRow = []
+            # Get the state of attribute parents & the T/F columns
+            for j in range(0,len(aParents)):
+               trueRow.append(cptObj[i][aParents[j])
+            trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
+            trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the false column
+            ### if row is non-false (true to any level)
+            if cptObj[i][cptObj][cptObj["index"]-1] != 1:
+               #### Save attr parent state to a list
+               trueRows.add(trueRow)
+            ### else (implicitly the row is false)
+         ## iterate over CPT backwards again
+         for i in range(numRows - 1, 0):
+            trueRow = []
+            # Get the state of attribute parents & the T/F columns
+            for j in range(0,len(aParents)):
+               trueRow.append(cptObj[i][aParents[j])
+            trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
+            trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the false column
+            ### if row is false:
+            if cptObj[i][len(cptObj["index"])-1] == 1:
+               #### if row state matches anything in the list of true states (iterate from 0 to size-2 on attr state, comparing value in each list
+               for r in trueRows:
+                  if trueRow[:-2] == r[:-2]:
+                     ##### copy the true/false from the true state to the false state
+                     cpt[i][len(cptObj["index"])-2] = r[-2:-1] # copy in the 'true'
+                     cpt[i][len(cptObj["index"])-2] = r[-1:] # copy in the 'false'
+         parents = n.get_related_nodes(direction=-1)
+         numRows = 2**len(parents)
       newCptObj["validated":False]
 #      newEventCN[node] = {"cpt":json.dumps(newCptObj)}
    return {"cn":newEventCN}
