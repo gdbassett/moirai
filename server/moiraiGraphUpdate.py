@@ -33,6 +33,8 @@ import json
 # for logging failed graph adds
 import logging
 
+# Import sets for when we want a list of uniques
+from sets import Set
 
 ### STATIC VARIABLES ###
 
@@ -490,8 +492,65 @@ def fixCPTs(event):
 # TAKES: An 'ae' or 'dn' dictionary
 # DOES: Updates CPTs of associated nodes in the dictionary
 # RETURNS: A 'cn' dictionary of changed nodes
+# NOTE: This function simply guesses at the CPT.  CPT should be manually validated.
+# NOTE: See "CPT Update Approach for reasoning behind why we build the CPTs the way we do.
+# BUG: This function will need access to the graph.
+#      Either make this part of a class w/ a global graph obj or pass it in
 def updateCPTs(event):
-   return {}
+   newEventCN = {}
+   # WHAT: Go through the edges & collect the nodes
+   # WHY: So we know what to update
+   nodes = Set()
+   for edge in event:
+      nodes.add(edge["target"])
+      nodes.add(edge["source"])
+   # WHAT: Update the nodes
+   # WHY: Because they have new edges
+   for node in nodes:
+      n = graph_db.get_node(node)
+      parents = n.get_related_nodes(direction=-1)
+      cptObj = json.loads(n["cpt"])
+      newCptObj = {}
+      newParents = set()
+      oldParents = set(cptObj["index"])
+      # WHAT: Get the new parents
+      # WHY: Because we're going to iterate over it to update the CPT
+      for parent in parents:
+         if parent.id in cptObj["index"]:
+            newParents.add(parent.id)
+      for parent in parents:
+         oldParents.discard(True)
+         oldParents.discard(False)
+         oldParents.discard(str(parent.id))
+      # WHAT: Remove old Parents from CPT
+      for parent in oldParents:
+         # get ID of old parent in lists
+         # remove rows where old parent is 0
+         # remove old parent from lists
+         # if no rows are true, make the all '1's row true
+      
+      for parent in newParents:
+         # Add newParent to front of index
+         # Copy all current columns into new columns w/ sequential #'s
+         # Add "0" at the beginning of the first columns
+         # Add "1" at the beginning of the second columns 
+         # If new parent is an attribute or threat
+         ## make the first half of the rows false
+         # Else (implicilty the parent is an event/condition
+         ## Get indexes of attribute/threat parents
+         ## Get indexes of event/condition parents
+         ## iterating over CPT backwards
+         ### if row is non-false (true to any level)
+         #### Save attr parent state to a list
+         #### pop the event/condition indexes off the list (in reverse order so indexes don't change) (note: true/false will still be on row
+         ### else (implicitly the row is false)
+         #### get attr parent state
+         #### pop the event/conditions off of it
+         #### if row state matches anything in the list of true states (iterate from 0 to size-2 on attr state, comparing value in each list
+         ##### copy the true/false from the true state to the false state
+      newCptObj["validated":False]
+#      newEventCN[node] = {"cpt":json.dumps(newCptObj)}
+   return {"cn":newEventCN}
 
 
 # TAKES: the graph and event
