@@ -41,7 +41,7 @@ import logging
 ### Set Environment ###
 
 # Hack to enable logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(filename="/tmp/moirai.log", filemode='w', level=logging.DEBUG)
 
 ### CLASS AND METHOD DEFINITIONS #### 
 
@@ -345,7 +345,15 @@ def validateNodeProperties(properties):
    # A basic validation of the cpt to make sure it can be 'stringed'
    if "cpt" in properties:
       try:
-         properties["cpt"] = str(properties["cpt"])
+         # if it's a dictionary, parse it as json into a string
+         if type(properties["cpt"]) is dict:
+            properties["cpt"] = json.dumps(properties["cpt"])
+         # if it's a string, send it on
+         elif type(properties["cpt"]) is str:
+            pass
+         # if it's something else, turn it into a string and hope for the best
+         else:
+            properties["cpt"] = str(properties["cpt"])
       except:
          raise ValueError("CPT cannot be turned into a string")
    return properties
@@ -438,21 +446,43 @@ def validateCPT(cpt):
 # DOES: updates the nodeIDs in the CPT form originIDs to dbIDs
 # RETURNS: The 'an' dictionary with CPTs anchored to the database
 def fixCPTs(event):
+   logging.debug("Receiving Event %s." % event)
    # Change the CPT parents
    for node in event:
-      # change the nodeID
-      event[node]["cpt"]["nodeID"] = node
-      parents = event[node]["cpt"].pop().pop()
-      # for each of the parents...
-      for p in parents:
-         # check each node update
-         for n in event:
-            # to see if the originid matches the parentID in the CPT
-            if event[n]["originid"] == p:
-               # if it does, replace the parent id with the new (db anchored) nodeid
-               parents[parents.index(p)] = n
-      # validate the CPT
-      event[node]["cpt"] = validateCPT(event[node]["cpt"])
+      # Parse the CPT to an object or fail trying
+      logging.debug("CPT is  %s of object type %s" % (event[node]["cpt"], type(event[node]["cpt"])))
+      try:
+         cptObj = json.loads(event[node]["cpt"])
+         # change the nodeID
+         cptObj["nodeid"] = node
+         # Remove the True/False headers, leaving the parent nodes
+         parents = cptObj["index"]
+         parents.pop()
+         parents.pop()
+         logging.debug("parents in is %s" % parents) # DEBUG
+         # for each of the parents...
+         for p in parents:
+            # check each node update
+            for n in event:
+               logging.debug("P in parents is %s, N in event is %s, OriginID is %s" % (p, n, event[n]["originid"]))
+               # to see if the originid matches the parentID in the CPT
+               if event[n]["originid"] == p:
+                  # if it does, replace the parent id with the new (db anchored) nodeid
+                  parents[parents.index(p)] = n
+         # put the true/false back on the index and add it back in
+         parents.append(True)
+         parents.append(False)
+         logging.debug("Parents out is %s." % parents)
+         cptObj["index"] = parents
+         # validate the CPT
+         cptObj = validateCPT(cptObj)
+         # Turn the CPT back into a string and put it back in the event
+         event[node]["cpt"] = json.dumps(cptObj)
+      except Exception as inst:
+         logging.error("CPT did not parse into object with error\r\n %s\r\n Returning default CPT" % inst)
+         # if it failed, just send back a default CPT
+         event[node]["cpt"] = json.dumps(validateCPT({})) 
+   logging.debug("Returning Event %s." % event)
    return event # TODO: return updated event, not original
 
 
@@ -470,6 +500,7 @@ def updateCPTs(event):
 # NOTE: Any nodes or edges that fail to validate will not be added and an error logged, but processing will continue
 # NOTE: CALL THIS
 def addDcesEvent(graph_db, event):
+   logging.debug("I just want to appologize at the top to anyone who runs this with debug logging enabled.  There is a TON of crap in here.")
    # Add 'and "DCES_VERSION" in event' to below to check that message
    #   is actually a DCES message, (in case other graph messase are used)
    updatedEvent = {} # empty dictionary for the updated Event
@@ -477,7 +508,7 @@ def addDcesEvent(graph_db, event):
    if "an" in event: # handle add node
       # Add the node to the neo4j database
       updatedEvent["an"] = an_handler(graph_db,event["an"])
-      updatedEvent["an"] = fixCPTs(updatedEvent["an"]      
+      updatedEvent["an"] = fixCPTs(updatedEvent["an"])
    if "ae" in event: # handle add edge
       # If nodes were added, make sure edges are referenced to originId
       if "an" in updatedEvent:
@@ -492,8 +523,8 @@ def addDcesEvent(graph_db, event):
    if "ce" in event: # handle change edge
       updatedEvent["ce"] = ce_handler(graph_db,event["ce"])
    if "cn" in event: # handle change node
-      if "cn" in updatedEvent":
-         updatedEvent["cn"] = dict(updatedEvent["cn".items() + cn_handler(graph_db,event["cn].items())
+      if "cn" in updatedEvent:
+         updatedEvent["cn"] = dict(updatedEvent["cn"].items() + cn_handler(graph_db,event["cn"].items()))
       else:
          updatedEvent["cn"] = cn_handler(graph_db,event["cn"])
    # edges need to be deleted first, otherwise they could get duplcate deletes since the 'dn' can delete edges
