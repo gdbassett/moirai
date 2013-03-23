@@ -574,7 +574,7 @@ def updateCPTs(event):
             ecParents = []
             for c in range(0,len(cptObj["index"])-3):
                p = graph_db.get_node(cptObj["index"])
-               if p["class"] is in ["attribute", "actor"]:
+               if p["class"] in ["attribute", "actor"]:
                   aParents.append(p)
                else: #implicitly events/conditions
                   ecParents.append(p)
@@ -584,7 +584,7 @@ def updateCPTs(event):
             trueRow = []
             # Get the state of attribute parents & the T/F columns
             for j in range(0,len(aParents)):
-               trueRow.append(cptObj[i][aParents[j])
+               trueRow.append(cptObj[i][aParents[j]])
             trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
             trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the false column
             ### if row is non-false (true to any level)
@@ -597,7 +597,7 @@ def updateCPTs(event):
             trueRow = []
             # Get the state of attribute parents & the T/F columns
             for j in range(0,len(aParents)):
-               trueRow.append(cptObj[i][aParents[j])
+               trueRow.append(cptObj[i][aParents[j]])
             trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
             trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the false column
             ### if row is false:
