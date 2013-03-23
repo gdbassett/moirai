@@ -34,15 +34,10 @@ config_file = "moirai.cfg"
 
 helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -t <topicId> : The graph topic to subscribe to.\r\n  -d <app domain> : The app domain to connect to.\r\n  -a <app name> : The name of the app to connect to.\r\n  -s <server host> : The websocket server host.\r\n  -p <server port> : The websocket server port.'
 
-idMap = {"A":"","B":"","C":"","D":"","1":"","2":"","3":""}
+#idMap = {"A":"","B":"","C":"","D":"","E":"","1":"","2":"","3":""}
 
-# Event 1 should create 1 node w/ an attribute parent an an edge parent in the CPT
-# Event 1 should also create a node with one event and two attribute parents in an "AND" relationship
-#event1 = {"dces_version":"0.2","ae":{"1":{"source":"D","target":"A","directed":True, "relationship":"describes","start":"2013-03-14T16:57Z"},"2":{"source":"A","target":"B","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"I'm sure!"},"3":{"source":"B","target":"C","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z"}},"an":{"A":{"label":"haxor","class":"actor","start":"2013-03-14T16:57Z","cpt":{"nodeid":"A","index":["D",True,False],"0":[0,1],"1":[1,0]},"comment":"A youtube educated hacker"},"B":{"label":"Haxors your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"comment":"Uses db_autopwn"},"C":{"label":"Your sites pwnd","class":"condition","start":"2013-03-14T16:57Z","cpt":{"nodeid":"C","index":["B",True,False],"0":[0,1],"1":[1,0]}},"D":{"class":"attribute","metadata":{"skills":"leet"},"start":"2013-03-14T16:57Z","cpt":{"nodeid":"D","index":[True,False],"0":[1,0]}}}}
-
-# Event 2 should add an attriute edge to the first subgraph of event 1
-# Event 3 should add an event edge to the first subbraph of event 1
-# Event 4 should del an edge from the second subgraph in event 1
+# Adds 5 nodes and links 2
+event1 = {"dces_version":"0.2","an":{"A":{"label":"A Required Attribute","class":"attribute","start":"2013-03-14T16:57Z","cpt":{"nodeid":"A","index":[True,False],"0":[1,0]},"comment":"This attribute is required"},"B":{"label":"An Event Happens","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":[True,False],"0":[1,0]},"comment":"An event happens.  This should have parents, but we're not going to bother"},"C":{"label":"resulting condition","class":"condition","start":"2013-03-14T16:57Z","cpt":{"nodeid":"C","index":["A","B",True,False],"0":[0,0,0,1],"1":[0,0,0,1],"2":[0,0,0,1],"3":[0,0,1,0]}, "comment":"Because of the Attribute and Event, this condition happens."},"D":{"label":"A previously unrequired attribute","class":"attribute","start":"2013-03-14T16:57Z","cpt":{"nodeid":"D","index":[True,False],"0":[1,0]},"comment":"This attribute isnt in C's CPT"},"E":{"label":"A previously unrequired Event","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"E","index":[True,False],"0":[1,0]},"comment":"An event isn't in E's CPT but will be linked by an edge.  This should have parents, but we're not going to bother"}},"ae":{"1":{"source":"A","target":"C","directed":True, "relationship":"influences","start":"2013-03-14T16:57Z", "comment":"Connects attribute to condition"},"2":{"source":"B","target":"C","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"connects event to condition"}}}
 
 clrGraph = "START n = node(*) MATCH n-[r?]-() DELETE n,r;"
 
@@ -100,45 +95,32 @@ class MyClientProtocol(WampClientProtocol):
 
    # What to do when receiving an event from pubsub
    def onApp(self, topicUri, event):
+      idMap = {}
       print app_name, topicUri, event
       if "an" in event:
          for node in event["an"]:
             idMap[event["an"][node]["originid"]] = node
 
-#      event2 = {"dces_version":"0.2","re":{"2":{"source":int(idMap["A"]),"target":int(idMap["B"]),"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","confidence":90}},"rn":{int(idMap["B"]):{"label":"Pays someone else to hack your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"finish":"2013-03-20T16:57Z"},}}
+      # Adds two previously undefined edges
+      # requires D, E, and C in idMap
+      event2 = {"dces_version":"0.2","ae":{"4":{"source":int(idMap["D"]),"target":int(idMap["C"]),"directed":True, "relationship":"influences","start":"2013-03-14T16:57Z", "comment":"Connects attribute to condition"},"5":{"source":int(idMap["E"]),"target":int(idMap["C"]),"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"connects event to condition"}}}
 
-#      event3 = {"dces_version":"0.2","cn":{int(idMap["D"]):{"label":"target has leet hacking skills"}},"ce":{"1":{"source":int(idMap["D"]),"target":int(idMap["A"]),"confidence":80}}}
+      # Deletes the first two edges.  Requires A, B, & C in idMap
+      event3 = {"dces_version":"0.2","de":{"1":{"source":int(idMap["A"]),"target":int(idMap["C"])},"2":{"source":int(idMap["B"]),"target":int(idMap["C"])}}}
 
-#      event4 = {"dces_version":"0.2","dn":{int(idMap["B"]):{}},"de":{"1":{"source":int(idMap["D"]),"target":int(idMap["A"])}}}
-      
-#      print "AN/AE done.  Press any key to run RN/RE"
-#      raw_input()
-
-      # Run RNs and REs
-      print "Publishing RN/REs %s" % event2
+      # Run Adding Edges to force CPT Updates
+      print "Adding Edges %s" % event2
       self.publish("moirai:graph1", event2)
 
       # pause
       time.sleep(5)
 
-#      print "RN/RE done.  Press any key to run CN/CE"
-#      raw_input()
-
-      # Run CNs and CEs
-      print "Publishing CN/CEs %s" % event3
+      # Deleting edges to force CPT updates
+      print "Deleting Edges %s" % event3
       self.publish("moirai:graph1", event3)
 
       # pause
       time.sleep(5)
-
-#      print "CN/CE done.  Press any key to run DN/DE."
-#      raw_input()
-
-      # Run DNs and DEs
-      print "Publishing DN/DEs %s" % event4
-      self.publish("moirai:graph1", event4)
-
-
 
    def onSessionOpen(self):
       print "Session Opened"

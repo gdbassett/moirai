@@ -31,8 +31,11 @@ Graph Standard:
 --"source": the id of the source node
 --"target": the id of the target node
 --"id": id assigned by the database
---"relationship": value of "describes" if "source" property "class" is "attribute, value of "leads to" if "source" property "class" is "event", "threat", or "condition"
---"directed": value of "true"
+--"relationship": value of "influence" if "source" property "class" is "attribute" and "target" property "class" is "event" or "condition"
+                  value of "leads to" if "source" property "class" is "event", "threat", or "condition" and "target" property "class" is "actor", "event", or "condition"
+                  value of "described by" if "source" property "class" is "event", "condition", or "actor" and "target" property "class" is "attribute"
+                  value of "described by" if both "source" and "target" property "class" are "attribute"
+--"directed": value of "True"
 -Edges may have a property "confidence" with an integer value from 0 to 100 representing the percent confidence
 -Edges must be directed
 -Nodes and Edges may have additional properties, however they will not be validated and may be ignored by the attack graph.

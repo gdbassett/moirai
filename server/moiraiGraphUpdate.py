@@ -66,11 +66,20 @@ def ae_handler(graph_db, event):
             source = graph_db.get_node(event[edge]["source"])
             target = graph_db.get_node(event[edge]["target"])
             source_attrs = source.get_properties()
-            # Not strictly necessary, but we'll set the relationship just to make sure
-            if "class" in source_attrs and source_attrs["class"] == "attribute":
-               relationship = "describes" 
-            else:
-               relationship = "leads to"
+            target_attrs = target.get_properties()
+            # Not strictly necessary, but we'll set the relationship if we can, otherwise 
+            if "class" in source_attrs and "class" in target_attrs:
+               if target_attrs["class"] in ["actor", "event", "condition"]:
+                  if source_attrs["class"] is "attribute":
+                     relationship = "influences"
+                  elif source-attrs["class"] in ["actor", "event", "condition"]:
+                     relationship = "leads to"
+                  else:
+                     relationship = event[edge]["relationship"]
+               elif target_attrs["class"] is "attribute":
+                  relationship = "described by"
+               else:
+                  relationship = event[edge]["relationship"]
 #            logging.debug("Source: %s, Target: %s") % (source.id, target.id) # Debug
             # Create the actual edge
             e = graph_db.get_or_create_relationships((source, relationship, target, event[edge]))
