@@ -36,7 +36,13 @@ helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -t <topicId
 
 idMap = {"A":"","B":"","C":"","D":"","1":"","2":"","3":""}
 
-event1 = {"dces_version":"0.2","ae":{"1":{"source":"D","target":"A","directed":True, "relationship":"describes","start":"2013-03-14T16:57Z"},"2":{"source":"A","target":"B","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"I'm sure!"},"3":{"source":"B","target":"C","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z"}},"an":{"A":{"label":"haxor","class":"actor","start":"2013-03-14T16:57Z","cpt":{"nodeid":"A","index":["D",True,False],"0":[0,1],"1":[1,0]},"comment":"A youtube educated hacker"},"B":{"label":"Haxors your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"comment":"Uses db_autopwn"},"C":{"label":"Your sites pwnd","class":"condition","start":"2013-03-14T16:57Z","cpt":{"nodeid":"C","index":["B",True,False],"0":[0,1],"1":[1,0]}},"D":{"class":"attribute","metadata":{"skills":"leet"},"start":"2013-03-14T16:57Z","cpt":{"nodeid":"D","index":[True,False],"0":[1,0]}}}}
+# Event 1 should create 1 node w/ an attribute parent an an edge parent in the CPT
+# Event 1 should also create a node with one event and two attribute parents in an "AND" relationship
+#event1 = {"dces_version":"0.2","ae":{"1":{"source":"D","target":"A","directed":True, "relationship":"describes","start":"2013-03-14T16:57Z"},"2":{"source":"A","target":"B","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"I'm sure!"},"3":{"source":"B","target":"C","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z"}},"an":{"A":{"label":"haxor","class":"actor","start":"2013-03-14T16:57Z","cpt":{"nodeid":"A","index":["D",True,False],"0":[0,1],"1":[1,0]},"comment":"A youtube educated hacker"},"B":{"label":"Haxors your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"comment":"Uses db_autopwn"},"C":{"label":"Your sites pwnd","class":"condition","start":"2013-03-14T16:57Z","cpt":{"nodeid":"C","index":["B",True,False],"0":[0,1],"1":[1,0]}},"D":{"class":"attribute","metadata":{"skills":"leet"},"start":"2013-03-14T16:57Z","cpt":{"nodeid":"D","index":[True,False],"0":[1,0]}}}}
+
+# Event 2 should add an attriute edge to the first subgraph of event 1
+# Event 3 should add an event edge to the first subbraph of event 1
+# Event 4 should del an edge from the second subgraph in event 1
 
 clrGraph = "START n = node(*) MATCH n-[r?]-() DELETE n,r;"
 
@@ -99,11 +105,11 @@ class MyClientProtocol(WampClientProtocol):
          for node in event["an"]:
             idMap[event["an"][node]["originid"]] = node
 
-      event2 = {"dces_version":"0.2","re":{"2":{"source":int(idMap["A"]),"target":int(idMap["B"]),"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","confidence":90}},"rn":{int(idMap["B"]):{"label":"Pays someone else to hack your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"finish":"2013-03-20T16:57Z"},}}
+#      event2 = {"dces_version":"0.2","re":{"2":{"source":int(idMap["A"]),"target":int(idMap["B"]),"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","confidence":90}},"rn":{int(idMap["B"]):{"label":"Pays someone else to hack your site","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":["A",True,False],"0":[0,1],"1":[0.9,0.1]},"finish":"2013-03-20T16:57Z"},}}
 
-      event3 = {"dces_version":"0.2","cn":{int(idMap["D"]):{"label":"target has leet hacking skills"}},"ce":{"1":{"source":int(idMap["D"]),"target":int(idMap["A"]),"confidence":80}}}
+#      event3 = {"dces_version":"0.2","cn":{int(idMap["D"]):{"label":"target has leet hacking skills"}},"ce":{"1":{"source":int(idMap["D"]),"target":int(idMap["A"]),"confidence":80}}}
 
-      event4 = {"dces_version":"0.2","dn":{int(idMap["B"]):{}},"de":{"1":{"source":int(idMap["D"]),"target":int(idMap["A"])}}}
+#      event4 = {"dces_version":"0.2","dn":{int(idMap["B"]):{}},"de":{"1":{"source":int(idMap["D"]),"target":int(idMap["A"])}}}
       
 #      print "AN/AE done.  Press any key to run RN/RE"
 #      raw_input()
