@@ -454,6 +454,14 @@ def fixEdges(event):
 # DOES: If the CPT doesn't validate, a default CPT is returned
 # RETURNS: The CPT
 def validateCPT(cpt):
+   # Make sure there are 2^parents rows
+   # make sure there's an nodeid row matching the node
+   # make sure there's an index row with all the parents in it
+   # make sure the last two nodes are between 0 and 1 inclusive
+   # make sure the rest of the rows represent the binary equiavlent of their row ID
+   # if anything doesn't validate
+   ## Create a CPT where nodes w/ all attributes and at least one condition/event are true
+   ## all other rows are false
    return cpt # TODO: return the validated or default cpt
 
 # TODO: Add 'fixCPTs' function -> fixes parents 
