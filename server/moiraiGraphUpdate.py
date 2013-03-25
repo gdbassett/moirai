@@ -510,8 +510,6 @@ def fixCPTs(graph_db, event):
 # RETURNS: A 'cn' dictionary of changed nodes
 # NOTE: This function simply guesses at the CPT.  CPT should be manually validated.
 # NOTE: See "CPT Update Approach for reasoning behind why we build the CPTs the way we do.
-# BUG: This function will need access to the graph.
-#      Either make this part of a class w/ a global graph obj or pass it in
 def updateCPTs(graph_db, event):
    logging.debug("event passed to updateCPTs of type %s is %s" % (type(event), event))
    newEventCN = {}
@@ -521,7 +519,7 @@ def updateCPTs(graph_db, event):
    for edge in event:
       logging.debug("Edge is %s, Edge target is %s" % (edge, event[edge]["target"]))
       nodes.add(event[edge]["target"])
-      nodes.add(event[edge]["source"])
+#      nodes.add(event[edge]["source"]) # This shouldn't be needed.  Only target should change
    # WHAT: Update the nodes
    # WHY: Because they have new edges
    for node in nodes:
@@ -548,10 +546,12 @@ def updateCPTs(graph_db, event):
       logging.debug("oldParents is %s" % oldParents)
       # WHAT: Remove old Parents from CPT
       for parent in oldParents:
+         logging.info("Removing %s from %s" % (parent, cptObj))
          anyTrue = False
          # get ID of old parent in lists
          i = cptObj["index"].index(parent)
          # remove rows where old parent is 1
+         # BUG: rows are not renumbered upon delete
          for row in range(2**len(parents)-1,-1,-1):
             row = str(row) # needed as the object keys are strings
             logging.debug("index i is %s and row is %s" % (i, row))
@@ -564,6 +564,26 @@ def updateCPTs(graph_db, event):
                if cptObj[row][len(row)-1] != 1:
                   anyTrue = True
          cptObj["index"].pop(i)
+         
+         # anyTrue = False
+         # deletedCounter = 0
+         # for row in range(0,numRows):
+            # if cptObj[row][i] == 1: # if deleted parent is true...
+                  # del cptObj[row] # delete the row
+                  # deletedCounter += 1
+            # else:
+               # cptObj[row].pop(i)
+               # if deletedCounter != 0:
+                  #cptObj[str(int(row)-deletedCounter)] = cptObj[row]
+                  #del cptObj[row]
+               # if cptObj[row][-1] != 1:
+                  # anyTrue = True
+         # cptObj["index"].pop(i)
+         numRows = 2**(len(cptObj["index"])-2)
+         # if not anyTrue:
+            # cptObj[numRows - 1][-1] = 0
+            # cptObj[numRows - 1][-2] = 1
+          
          # if no rows are true, make the all '1's row true
          if not anyTrue:
             # Set false to 0
@@ -577,6 +597,7 @@ def updateCPTs(graph_db, event):
          numRows = 2**(len(cptObj["index"])-2)
       
       for parent in newParents:
+         logging.info("Adding %s to %s" % (parent, cptObj))
          pa = graph_db.get_node(parent)
          # Add newParent to front of index
          cptObj["index"].insert(0, parent)
@@ -584,8 +605,8 @@ def updateCPTs(graph_db, event):
          # WHY: So that we can get the right number of rows
          for row in range(0, numRows):
             row = str(row) # because the keys int he CPT are strings
-            logging.debug("Number of rows is %s and row is %s" % (numRows, row))
-            cptObj[str(numRows + int(row))] = cptObj[row]
+            logging.debug("Number of rows is %s and row  %s is %s" % (numRows, row, cptObj[row]))
+            cptObj[str(numRows + int(row))] = cptObj[row][:] # colon to create second object
             # Add "0" at the beginning of the first columns
             cptObj[row].insert(0, 0)
             # Add "1" at the beginning of the second columns 
@@ -596,14 +617,13 @@ def updateCPTs(graph_db, event):
                ## make the first half of the rows false
                cptObj[row][len(cptObj["index"])-1] = 1
                cptObj[row][len(cptObj["index"])-2] = 0
+            logging.debug("New row %s is %s and row %s is %s" % (row, cptObj[row], (numRows+int(row)), cptObj[str(numRows + int(row))]))
          # If the node is an even or condition
          # The logic is harder and needs to be done separately
-         
-         # BUG: From here down needs to be evaluated for logical soundness.
-         
          if pa["class"] in ["event", "condition"]:
-            ## Get indexes of attribute/actor parents
-            ## Get indexes of event/condition parents
+            # WHAT: Get indexes of attribute/actor parents
+            # WHAT: Get indexes of event/condition parents
+            # WHY: Because we will use a list of indexes to either add rows to keep or update rows
             aParents = []
             ecParents = []
             for c in range(0,len(cptObj["index"])-2):
@@ -612,41 +632,51 @@ def updateCPTs(graph_db, event):
                   aParents.append(c)
                else: #implicitly events/conditions
                   ecParents.append(c)
-                  
-            # BUG: Tabbed this whole section in because I think thats how it should be
-            #      Again, I need to double check all logic in this section      
-                  
             ## iterating over CPT backwards
-            trueRows = set()
-            for i in range(numRows - 1, 0):
+            trueRows = []
+            falseRows = []
+            for i in range((numRows * 2) -1, -1,-1):
+               i = str(i)
                trueRow = []
-               # Get the state of attribute parents & the T/F columns
-               for j in range(0,len(aParents)):
-                  trueRow.append(cptObj[i][aParents[j]])
-               trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
-               trueRow.append(cptObj[i][len(cptObj["index"])-1]) # Append the false column
+               falseRow = []
+               logging.debug("numRows is %s, iterator is %s, CPT is %s, and the CPT index is %s" % (numRows, i, cptObj, cptObj["index"]))
                ### if row is non-false (true to any level)
-               if cptObj[i][cptObj][cptObj["index"]-1] != 1:
+               if cptObj[i][-1] != 1:
+                  # Append the row number first
+                  trueRow.append(i)
+                  # Get the state of attribute parents & the T/F columns
+                  for j in range(0,len(aParents)):
+                     trueRow.append(cptObj[i][aParents[j]])
+                  trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
+                  trueRow.append(cptObj[i][len(cptObj["index"])-1]) # Append the false column
                   #### Save attr parent state to a list
-                  trueRows.add(trueRow)
-               ### else (implicitly the row is false)
-            ## iterate over CPT backwards again
-            for i in range(numRows - 1, 0):
-               trueRow = []
-               # Get the state of attribute parents & the T/F columns
-               for j in range(0,len(aParents)):
-                  trueRow.append(cptObj[i][aParents[j]])
-               trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
-               trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the false column
-               ### if row is false:
-               if cptObj[i][len(cptObj["index"])-1] == 1:
-                  #### if row state matches anything in the list of true states (iterate from 0 to size-2 on attr state, comparing value in each list
+                  trueRows.append(trueRow)
+               # WHAT: Else, make a list of the rows that are false
+               # WHY: For rows where the added event/condition is true,
+               #       we will take the list of false rows and change them
+               #       to match a row where all the attribute parents  are true
+               # TODO: This could be improved by also finding the closest
+               #        match to the event/condition parents as well
+               else:
+                  # Append the row number first
+                  falseRow.append(i)
+                  # Get the state of attribute parents & the T/F columns
+                  for j in range(0,len(aParents)):
+                     falseRow.append(cptObj[i][aParents[j]])
+                  falseRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
+                  falseRow.append(cptObj[i][len(cptObj["index"])-1]) # Append the false column
+                  #### Save attr parent state to a list
+                  falseRows.append(falseRow)
+               # WHAT: Iterate over the false rows
+            for i in falseRows:
+               if i[-1] == 1: # Row is false
                   for r in trueRows:
-                     if trueRow[:-2] == r[:-2]:
+                     if i[1:-2] == r[1:-2]: # if the attributes of the true row match the false row...
                         ##### copy the true/false from the true state to the false state
-                        cpt[i][len(cptObj["index"])-2] = r[-2:-1] # copy in the 'true'
-                        cpt[i][len(cptObj["index"])-2] = r[-1:] # copy in the 'false'
-#         parents = n.get_related_nodes(direction=-1)
+                        cptObj[i[0]][len(cptObj["index"])-2] = r[-2] # copy in the 'true'
+                        cptObj[i[0]][len(cptObj["index"])-1] = r[-1] # copy in the 'false'
+                        break # break the loop (there may be more matches, we don't care.  We're just guessing.
+         # update the number of rows to the new value based on the new cpt
          numRows = 2**(len(cptObj["index"])-2)
          logging.info("New CPT is %s" % cptObj)
       # Set the new CPT to unreviewed
@@ -656,7 +686,7 @@ def updateCPTs(graph_db, event):
       # Save th e new CPT to the Database
       g = graph_db.get_node(node)
       g["cpt"] = json.dumps(cptObj)
-   return {"cn":newEventCN}
+   return newEventCN
 
 
 # TAKES: the graph and event
