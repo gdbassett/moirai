@@ -550,51 +550,35 @@ def updateCPTs(graph_db, event):
          anyTrue = False
          # get ID of old parent in lists
          i = cptObj["index"].index(parent)
-         # remove rows where old parent is 1
-         # BUG: rows are not renumbered upon delete
-         for row in range(2**len(parents)-1,-1,-1):
-            row = str(row) # needed as the object keys are strings
-            logging.debug("index i is %s and row is %s" % (i, row))
-            if cptObj[row][i] == 1:
-               del cptObj[row]
-            # remove old parent from lists
+         # Set a counter for the number of rows we've deleted
+         deletedCounter = 0
+         # WHAT: Iterate throw the rows
+         # WHAT: Delete rows where the deleted parent is true
+         # WHAT: For the rest of the rows, move them up in the row count
+         #        and delete the parent out of them by index
+         # WHAT: Keep track of if any non-deleted rows were true &
+         #        how many rows we've deleted
+         # WHY: Get rid of obselete rows and columns & compress the rows to be contiguious
+         for row in range(0,numRows):
+            if cptObj[row][i] == 1: # if deleted parent is true...
+               del cptObj[row] # delete the row
+               deletedCounter += 1
             else:
                cptObj[row].pop(i)
-               # check if row is true (in this case, if false is not 1)
-               if cptObj[row][len(row)-1] != 1:
+               if deletedCounter != 0:
+                  cptObj[str(int(row)-deletedCounter)] = cptObj[row]
+                  del cptObj[row]
+               if cptObj[row][-1] != 1:
                   anyTrue = True
+         # Delete the deleted parent out of the index
          cptObj["index"].pop(i)
-         
-         # anyTrue = False
-         # deletedCounter = 0
-         # for row in range(0,numRows):
-            # if cptObj[row][i] == 1: # if deleted parent is true...
-                  # del cptObj[row] # delete the row
-                  # deletedCounter += 1
-            # else:
-               # cptObj[row].pop(i)
-               # if deletedCounter != 0:
-                  #cptObj[str(int(row)-deletedCounter)] = cptObj[row]
-                  #del cptObj[row]
-               # if cptObj[row][-1] != 1:
-                  # anyTrue = True
-         # cptObj["index"].pop(i)
+         # Update the row count since it's now half of what it was
          numRows = 2**(len(cptObj["index"])-2)
-         # if not anyTrue:
-            # cptObj[numRows - 1][-1] = 0
-            # cptObj[numRows - 1][-2] = 1
-          
-         # if no rows are true, make the all '1's row true
+         # WHAT: If no rows were true, make the last one true
+         # WHY: Because if nothing's true, why have the node?
          if not anyTrue:
-            # Set false to 0
-            # we're assuming the last row is all 1's
-            # use index to get row length
-            cptObj[numRows - 1][len(cptObj["index"])-1] = 0
-            # Set true to 1
-            cptObj[numRows - 1][len(cptObj["index"])-2] = 1
-         # Going ot keep parents and numRows up to date.  This may not work
-#         parents = n.get_related_nodes(direction=-1)
-         numRows = 2**(len(cptObj["index"])-2)
+            cptObj[numRows - 1][-1] = 0
+            cptObj[numRows - 1][-2] = 1
       
       for parent in newParents:
          logging.info("Adding %s to %s" % (parent, cptObj))
