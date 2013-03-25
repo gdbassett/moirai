@@ -560,25 +560,30 @@ def updateCPTs(graph_db, event):
          #        how many rows we've deleted
          # WHY: Get rid of obselete rows and columns & compress the rows to be contiguious
          for row in range(0,numRows):
+            row = str(row) # because they're all strings =P
+            logging.debug("Handling row %s, %s, and index %s" % (row, cptObj[row], i))
             if cptObj[row][i] == 1: # if deleted parent is true...
                del cptObj[row] # delete the row
                deletedCounter += 1
             else:
+               logging.debug("row %s:%s is False for parent.  False is %s" % (row, cptObj[row], cptObj[row][-1]))
+               if cptObj[row][-1] != 1:
+                  logging.debug("Setting anyTrue to true")
+                  anyTrue = True
                cptObj[row].pop(i)
                if deletedCounter != 0:
                   cptObj[str(int(row)-deletedCounter)] = cptObj[row]
                   del cptObj[row]
-               if cptObj[row][-1] != 1:
-                  anyTrue = True
          # Delete the deleted parent out of the index
          cptObj["index"].pop(i)
          # Update the row count since it's now half of what it was
          numRows = 2**(len(cptObj["index"])-2)
+         logging.debug("new CPT is %s with new numRows %s" % (cptObj, numRows))
          # WHAT: If no rows were true, make the last one true
          # WHY: Because if nothing's true, why have the node?
          if not anyTrue:
-            cptObj[numRows - 1][-1] = 0
-            cptObj[numRows - 1][-2] = 1
+            cptObj[str(numRows - 1)][-1] = 0
+            cptObj[str(numRows - 1)][-2] = 1
       
       for parent in newParents:
          logging.info("Adding %s to %s" % (parent, cptObj))
