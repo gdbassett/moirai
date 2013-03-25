@@ -116,8 +116,8 @@ class MyClientProtocol(WampClientProtocol):
       time.sleep(5)
 
       # Deleting edges to force CPT updates
-      print "Deleting Edges %s" % event3
-      self.publish("moirai:graph1", event3)
+#      print "Deleting Edges %s" % event3
+#      self.publish("moirai:graph1", event3)
 
       # pause
       time.sleep(5)

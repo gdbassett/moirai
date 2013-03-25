@@ -72,7 +72,7 @@ def ae_handler(graph_db, event):
                if target_attrs["class"] in ["actor", "event", "condition"]:
                   if source_attrs["class"] is "attribute":
                      relationship = "influences"
-                  elif source-attrs["class"] in ["actor", "event", "condition"]:
+                  elif source_attrs["class"] in ["actor", "event", "condition"]:
                      relationship = "leads to"
                   else:
                      relationship = event[edge]["relationship"]
@@ -194,12 +194,16 @@ def de_handler(graph_db, event):
       if ("source" in event[edge]) and ("target" in event[edge]):
          params = {"A": event[edge]["source"], "B": event[edge]["target"]}
          e, meta = cypher.execute(graph_db, query, params)
-         # populate the updated de dictionary.
-         updatedDE[e[0][0].id] = event[edge]
-         updatedDE[e[0][0].id]["originid"] = edge
-         logging.info("Deleting edge %s" % e[0][0].id) # DEBUG
-         # delete the edge
-         e[0][0].delete()    
+         logging.debug("e is %s" % e)
+         if e != []:
+            # populate the updated de dictionary.
+            updatedDE[e[0][0].id] = event[edge]
+            updatedDE[e[0][0].id]["originid"] = edge
+            logging.info("Deleting edge %s" % e[0][0].id) # DEBUG
+            # delete the edge
+            e[0][0].delete()
+         else:
+            logging.info("Edge %s does not exist to delete." % edge)    
       else:
          logging.error("Edge Delete missing source/target necessary to delete it.")
    return updatedDE
@@ -394,8 +398,8 @@ def validateEdge(properties):
 def validateEdgeProperties(properties):
    # Check for required relationship property
    if "relationship" in properties:
-      if properties["relationship"] not in ["describes", "leads to"]:
-         raise ValueError("Relationship not one of the two required values")
+      if properties["relationship"] not in ["described by", "leads to","influences"]:
+         raise ValueError("Relationship value %s is not one of the required values('described by', 'leads to', or 'influences'" % properties["relationship"])
    if "directed" in properties:
       if properties["directed"] != True:
          raise ValueError("Edge is explicitly undirected.")
@@ -456,7 +460,7 @@ def validateCPT(cpt):
 # TAKES: An updated 'an' dictionary
 # DOES: updates the nodeIDs in the CPT form originIDs to dbIDs
 # RETURNS: The 'an' dictionary with CPTs anchored to the database
-def fixCPTs(event):
+def fixCPTs(graph_db, event):
    logging.debug("Receiving Event %s." % event)
    # Change the CPT parents
    for node in event:
@@ -475,7 +479,7 @@ def fixCPTs(event):
          for p in parents:
             # check each node update
             for n in event:
-               logging.debug("P in parents is %s, N in event is %s, OriginID is %s" % (p, n, event[n]["originid"]))
+#               logging.debug("P in parents is %s, N in event is %s, OriginID is %s" % (p, n, event[n]["originid"]))
                # to see if the originid matches the parentID in the CPT
                if event[n]["originid"] == p:
                   # if it does, replace the parent id with the new (db anchored) nodeid
@@ -489,9 +493,12 @@ def fixCPTs(event):
          cptObj = validateCPT(cptObj)
          # Turn the CPT back into a string and put it back in the event
          event[node]["cpt"] = json.dumps(cptObj)
+         # Put it in the database
+         g = graph_db.get_node(node)
+         g["cpt"] = event[node]["cpt"]
       except Exception as inst:
          logging.error("CPT did not parse into object with error\r\n %s\r\n Returning default CPT" % inst)
-         # if it failed, just send back a default CPT
+         # if it failed, just send back an default CPT by sending validateCPT a blankCPT
          event[node]["cpt"] = json.dumps(validateCPT({})) 
    logging.debug("Returning Event %s." % event)
    return event # TODO: return updated event, not original
@@ -505,40 +512,49 @@ def fixCPTs(event):
 # NOTE: See "CPT Update Approach for reasoning behind why we build the CPTs the way we do.
 # BUG: This function will need access to the graph.
 #      Either make this part of a class w/ a global graph obj or pass it in
-def updateCPTs(event):
+def updateCPTs(graph_db, event):
+   logging.debug("event passed to updateCPTs of type %s is %s" % (type(event), event))
    newEventCN = {}
    # WHAT: Go through the edges & collect the nodes
    # WHY: So we know what to update
    nodes = Set()
    for edge in event:
-      nodes.add(edge["target"])
-      nodes.add(edge["source"])
+      logging.debug("Edge is %s, Edge target is %s" % (edge, event[edge]["target"]))
+      nodes.add(event[edge]["target"])
+      nodes.add(event[edge]["source"])
    # WHAT: Update the nodes
    # WHY: Because they have new edges
    for node in nodes:
       n = graph_db.get_node(node)
       parents = n.get_related_nodes(direction=-1)
-      numRows = 2**len(parents)-1
       cptObj = json.loads(n["cpt"])
-      newCptObj = {}
+      numRows = 2**(len(cptObj["index"])-2)
+      logging.debug("CPT to be updated is %s" % cptObj)
       newParents = set()
       oldParents = set(cptObj["index"])
       # WHAT: Get the new parents
       # WHY: Because we're going to iterate over it to update the CPT
       for parent in parents:
-         if parent.id in cptObj["index"]:
+         if parent.id not in cptObj["index"]:
             newParents.add(parent.id)
+      # WHAT: Remove current parents to get old parents
+      # WHY: We'll iterate over them to update the CPT
+      logging.debug("oldParents is %s before discards" % oldParents)
+      oldParents.discard(True)
+      oldParents.discard(False)
       for parent in parents:
-         oldParents.discard(True)
-         oldParents.discard(False)
-         oldParents.discard(str(parent.id))
+         logging.debug("Discarding parent %s" % parent.id)
+         oldParents.discard(parent.id)
+      logging.debug("oldParents is %s" % oldParents)
       # WHAT: Remove old Parents from CPT
       for parent in oldParents:
          anyTrue = False
          # get ID of old parent in lists
-         i = cptObj["index"].index(parent.id)
+         i = cptObj["index"].index(parent)
          # remove rows where old parent is 1
          for row in range(2**len(parents)-1,-1,-1):
+            row = str(row) # needed as the object keys are strings
+            logging.debug("index i is %s and row is %s" % (i, row))
             if cptObj[row][i] == 1:
                del cptObj[row]
             # remove old parent from lists
@@ -549,7 +565,7 @@ def updateCPTs(event):
                   anyTrue = True
          cptObj["index"].pop(i)
          # if no rows are true, make the all '1's row true
-         if not AnyTrue:
+         if not anyTrue:
             # Set false to 0
             # we're assuming the last row is all 1's
             # use index to get row length
@@ -557,70 +573,89 @@ def updateCPTs(event):
             # Set true to 1
             cptObj[numRows - 1][len(cptObj["index"])-2] = 1
          # Going ot keep parents and numRows up to date.  This may not work
-         parents = n.get_related_nodes(direction=-1)
-         numRows = 2**len(parents)
+#         parents = n.get_related_nodes(direction=-1)
+         numRows = 2**(len(cptObj["index"])-2)
       
       for parent in newParents:
+         pa = graph_db.get_node(parent)
          # Add newParent to front of index
-         cptObj["index"].insert(0, parent.id)
-         # Copy all current columns into new columns w/ sequential #'s
-         for row in range(0, numRows - 1):
-            cptObj[numRows + row] = cptObj[row]
+         cptObj["index"].insert(0, parent)
+         # WHAT: Copy all current columns into new columns w/ sequential #'s
+         # WHY: So that we can get the right number of rows
+         for row in range(0, numRows):
+            row = str(row) # because the keys int he CPT are strings
+            logging.debug("Number of rows is %s and row is %s" % (numRows, row))
+            cptObj[str(numRows + int(row))] = cptObj[row]
             # Add "0" at the beginning of the first columns
             cptObj[row].insert(0, 0)
             # Add "1" at the beginning of the second columns 
-            cptObj[numRows + row].insert(0,1)
+            cptObj[str(numRows + int(row))].insert(0,1)
             # If new parent is an attribute or actor
-            if parent["class"] in ["attribute", "actor"]:
+            # The logic is easy and can be done int his loop
+            if pa["class"] in ["attribute", "actor"]:
                ## make the first half of the rows false
                cptObj[row][len(cptObj["index"])-1] = 1
-               cptObj[row][len(cptObj["index"])-2] = 2
-         # Else (implicilty the parent is an event/condition
-         if parent["class"] in ["event", "condition"]:
+               cptObj[row][len(cptObj["index"])-2] = 0
+         # If the node is an even or condition
+         # The logic is harder and needs to be done separately
+         
+         # BUG: From here down needs to be evaluated for logical soundness.
+         
+         if pa["class"] in ["event", "condition"]:
             ## Get indexes of attribute/actor parents
             ## Get indexes of event/condition parents
             aParents = []
             ecParents = []
-            for c in range(0,len(cptObj["index"])-3):
-               p = graph_db.get_node(cptObj["index"])
+            for c in range(0,len(cptObj["index"])-2):
+               p = graph_db.get_node(cptObj["index"][c])
                if p["class"] in ["attribute", "actor"]:
-                  aParents.append(p)
+                  aParents.append(c)
                else: #implicitly events/conditions
-                  ecParents.append(p)
-         ## iterating over CPT backwards
-         trueRows = set()
-         for i in range(numRows - 1, 0):
-            trueRow = []
-            # Get the state of attribute parents & the T/F columns
-            for j in range(0,len(aParents)):
-               trueRow.append(cptObj[i][aParents[j]])
-            trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
-            trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the false column
-            ### if row is non-false (true to any level)
-            if cptObj[i][cptObj][cptObj["index"]-1] != 1:
-               #### Save attr parent state to a list
-               trueRows.add(trueRow)
-            ### else (implicitly the row is false)
-         ## iterate over CPT backwards again
-         for i in range(numRows - 1, 0):
-            trueRow = []
-            # Get the state of attribute parents & the T/F columns
-            for j in range(0,len(aParents)):
-               trueRow.append(cptObj[i][aParents[j]])
-            trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
-            trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the false column
-            ### if row is false:
-            if cptObj[i][len(cptObj["index"])-1] == 1:
-               #### if row state matches anything in the list of true states (iterate from 0 to size-2 on attr state, comparing value in each list
-               for r in trueRows:
-                  if trueRow[:-2] == r[:-2]:
-                     ##### copy the true/false from the true state to the false state
-                     cpt[i][len(cptObj["index"])-2] = r[-2:-1] # copy in the 'true'
-                     cpt[i][len(cptObj["index"])-2] = r[-1:] # copy in the 'false'
-         parents = n.get_related_nodes(direction=-1)
-         numRows = 2**len(parents)
-      newCptObj["validated":False]
-#      newEventCN[node] = {"cpt":json.dumps(newCptObj)}
+                  ecParents.append(c)
+                  
+            # BUG: Tabbed this whole section in because I think thats how it should be
+            #      Again, I need to double check all logic in this section      
+                  
+            ## iterating over CPT backwards
+            trueRows = set()
+            for i in range(numRows - 1, 0):
+               trueRow = []
+               # Get the state of attribute parents & the T/F columns
+               for j in range(0,len(aParents)):
+                  trueRow.append(cptObj[i][aParents[j]])
+               trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
+               trueRow.append(cptObj[i][len(cptObj["index"])-1]) # Append the false column
+               ### if row is non-false (true to any level)
+               if cptObj[i][cptObj][cptObj["index"]-1] != 1:
+                  #### Save attr parent state to a list
+                  trueRows.add(trueRow)
+               ### else (implicitly the row is false)
+            ## iterate over CPT backwards again
+            for i in range(numRows - 1, 0):
+               trueRow = []
+               # Get the state of attribute parents & the T/F columns
+               for j in range(0,len(aParents)):
+                  trueRow.append(cptObj[i][aParents[j]])
+               trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the true column
+               trueRow.append(cptObj[i][len(cptObj["index"])-2]) # Append the false column
+               ### if row is false:
+               if cptObj[i][len(cptObj["index"])-1] == 1:
+                  #### if row state matches anything in the list of true states (iterate from 0 to size-2 on attr state, comparing value in each list
+                  for r in trueRows:
+                     if trueRow[:-2] == r[:-2]:
+                        ##### copy the true/false from the true state to the false state
+                        cpt[i][len(cptObj["index"])-2] = r[-2:-1] # copy in the 'true'
+                        cpt[i][len(cptObj["index"])-2] = r[-1:] # copy in the 'false'
+#         parents = n.get_related_nodes(direction=-1)
+         numRows = 2**(len(cptObj["index"])-2)
+         logging.info("New CPT is %s" % cptObj)
+      # Set the new CPT to unreviewed
+      cptObj["reviewed"] = False
+      # Save the new CPT to the CPT list
+      newEventCN[node] = {"cpt":json.dumps(cptObj)}
+      # Save th e new CPT to the Database
+      g = graph_db.get_node(node)
+      g["cpt"] = json.dumps(cptObj)
    return {"cn":newEventCN}
 
 
@@ -638,7 +673,7 @@ def addDcesEvent(graph_db, event):
    if "an" in event: # handle add node
       # Add the node to the neo4j database
       updatedEvent["an"] = an_handler(graph_db,event["an"])
-      updatedEvent["an"] = fixCPTs(updatedEvent["an"])
+      updatedEvent["an"] = fixCPTs(graph_db, updatedEvent["an"])
    if "ae" in event: # handle add edge
       # If nodes were added, make sure edges are referenced to originId
       if "an" in updatedEvent:
@@ -646,9 +681,9 @@ def addDcesEvent(graph_db, event):
       # Add the edge to the neo4j database
       updatedEvent["ae"] = ae_handler(graph_db,event["ae"])
       if "cn" in updatedEvent:
-         updatedEvent["cn"] = dict(updatedEvent["cn"].items() + updateCPTs(updatedEvents["ae"]).items())
+         updatedEvent["cn"] = dict(updatedEvent["cn"].items() + updateCPTs(graph_db, updatedEvents["ae"]).items())
       else:
-         updatedEvent["cn"] = updateCPTs(updatedEvent["ae"])
+         updatedEvent["cn"] = updateCPTs(graph_db, updatedEvent["ae"])
    # the order of 'ce/cn's shouldn't matter since they are referenced to dbIds
    if "ce" in event: # handle change edge
       updatedEvent["ce"] = ce_handler(graph_db,event["ce"])
@@ -661,9 +696,9 @@ def addDcesEvent(graph_db, event):
    if "de" in event: # handle delete edge
       updatedEvent["de"] = de_handler(graph_db,event["de"])
       if "cn" in updatedEvent:
-         updatedEvent["cn"] = dict(updatedEvent["cn"].items() + updateCPTs(updatedEvents["de"]).items())
+         updatedEvent["cn"] = dict(updatedEvent["cn"].items() + updateCPTs(graph_db, updatedEvents["de"]).items())
       else:
-         updatedEvent["cn"] = updateCPTs(updatedEvent["de"])
+         updatedEvent["cn"] = updateCPTs(graph_db, updatedEvent["de"])
    if "dn" in event: # handle delete node
       updatedDEDN = dn_handler(graph_db,event["dn"])
       # Add the DN dictionary to the updated event
