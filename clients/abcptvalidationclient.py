@@ -34,10 +34,9 @@ config_file = "moirai.cfg"
 
 helpMsg = 'abclienttemplate.py [options]\r\n  -h : This message\r\n  -t <topicId> : The graph topic to subscribe to.\r\n  -d <app domain> : The app domain to connect to.\r\n  -a <app name> : The name of the app to connect to.\r\n  -s <server host> : The websocket server host.\r\n  -p <server port> : The websocket server port.'
 
-#idMap = {"A":"","B":"","C":"","D":"","E":"","1":"","2":"","3":""}
 
 # Adds 5 nodes and links 2
-event1 = {"dces_version":"0.2","an":{"A":{"label":"A Required Attribute","class":"attribute","start":"2013-03-14T16:57Z","cpt":{"nodeid":"A","index":[True,False],"0":[1,0]},"comment":"This attribute is required"},"B":{"label":"An Event Happens","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":[True,False],"0":[1,0]},"comment":"An event happens.  This should have parents, but we're not going to bother"},"C":{"label":"resulting condition","class":"condition","start":"2013-03-14T16:57Z","cpt":{"nodeid":"C","index":["A","B",True,False],"0":[0,0,0,1],"1":[0,0,0,1],"2":[0,0,0,1],"3":[0,0,1,0]}, "comment":"Because of the Attribute and Event, this condition happens."},"D":{"label":"A previously unrequired attribute","class":"attribute","start":"2013-03-14T16:57Z","cpt":{"nodeid":"D","index":[True,False],"0":[1,0]},"comment":"This attribute isnt in C's CPT"},"E":{"label":"A previously unrequired Event","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"E","index":[True,False],"0":[1,0]},"comment":"An event isn't in E's CPT but will be linked by an edge.  This should have parents, but we're not going to bother"}},"ae":{"1":{"source":"A","target":"C","directed":True, "relationship":"influences","start":"2013-03-14T16:57Z", "comment":"Connects attribute to condition"},"2":{"source":"B","target":"C","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"connects event to condition"}}}
+event1 = {"dces_version":"0.2","an":{"A":{"label":"A Required Attribute","class":"attribute","start":"2013-03-14T16:57Z","cpt":{"nodeid":"A","index":[True,False],"0":[1,0]},"comment":"This attribute is required"},"B":{"label":"An Event Happens","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"B","index":[True,False],"0":[1,0]},"comment":"An event happens.  This should have parents, but we're not going to bother"},"C":{"label":"resulting condition","class":"condition","start":"2013-03-14T16:57Z","cpt":{"nodeid":"C","index":["A","B",True,False],"0":[0,0,0,1],"1":[0,1,0,1],"2":[1,0,0,1],"3":[1,1,1,0]}, "comment":"Because of the Attribute and Event, this condition happens."},"D":{"label":"A previously unrequired attribute","class":"attribute","start":"2013-03-14T16:57Z","cpt":{"nodeid":"D","index":[True,False],"0":[1,0]},"comment":"This attribute isnt in C's CPT"},"E":{"label":"A previously unrequired Event","class":"event","start":"2013-03-14T16:57Z","cpt":{"nodeid":"E","index":[True,False],"0":[1,0]},"comment":"An event isn't in E's CPT but will be linked by an edge.  This should have parents, but we're not going to bother"}},"ae":{"1":{"source":"A","target":"C","directed":True, "relationship":"influences","start":"2013-03-14T16:57Z", "comment":"Connects attribute to condition"},"2":{"source":"B","target":"C","directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"connects event to condition"}}}
 
 clrGraph = "START n = node(*) MATCH n-[r?]-() DELETE n,r;"
 
@@ -104,6 +103,10 @@ class MyClientProtocol(WampClientProtocol):
       # Adds two previously undefined edges
       # requires D, E, and C in idMap
       event2 = {"dces_version":"0.2","ae":{"4":{"source":int(idMap["D"]),"target":int(idMap["C"]),"directed":True, "relationship":"influences","start":"2013-03-14T16:57Z", "comment":"Connects attribute to condition"},"5":{"source":int(idMap["E"]),"target":int(idMap["C"]),"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"connects event to condition"}}}
+      # Only adds attribute edge.  Need to test attribute edge adding logic.
+#      event2 = {"dces_version":"0.2","ae":{"4":{"source":int(idMap["D"]),"target":int(idMap["C"]),"directed":True, "relationship":"influences","start":"2013-03-14T16:57Z", "comment":"Connects attribute to condition"}}}
+      # Only adds event edge.  Needed to test event edge adding logic
+#      event2 = {"dces_version":"0.2","ae":{"5":{"source":int(idMap["E"]),"target":int(idMap["C"]),"directed":True, "relationship":"leads to","start":"2013-03-14T16:57Z","comment":"connects event to condition"}}}
 
       # Deletes the first two edges.  Requires A, B, & C in idMap
       event3 = {"dces_version":"0.2","de":{"1":{"source":int(idMap["A"]),"target":int(idMap["C"])},"2":{"source":int(idMap["B"]),"target":int(idMap["C"])}}}
@@ -116,8 +119,8 @@ class MyClientProtocol(WampClientProtocol):
       time.sleep(5)
 
       # Deleting edges to force CPT updates
-#      print "Deleting Edges %s" % event3
-#      self.publish("moirai:graph1", event3)
+      print "Deleting Edges %s" % event3
+      self.publish("moirai:graph1", event3)
 
       # pause
       time.sleep(5)
