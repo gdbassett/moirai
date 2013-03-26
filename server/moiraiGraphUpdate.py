@@ -298,18 +298,12 @@ def validateNode(properties):
    if "class" not in properties:
 #      raise ValueError("event missing required class property")
       return False
-   # events and conditions need to have labels
-   if properties["class"] in ["actor", "event", "condition"]:
-      if "label" not in properties:
-#         raise ValueError("event or condition clas node missing label property")
-         return False
-   # attributes need to have metadata
-   elif properties["class"] is "attribute":
-      if "metadata" not in properties:
-#         raise ValueError("no metadata property in attribute event")   
-         return False
+   # Nodes need to have labels
+   elif "label" not in properties:
+#      raise ValueError("node missing label property")
+      return False
    # check event for require property 'cpt'
-   if "cpt" not in properties:
+   elif "cpt" not in properties:
 #      raise ValueError('No cpt property')
       return False
    # check event for required property 'start'
@@ -327,20 +321,22 @@ def validateNodeProperties(properties):
    if "class" in properties:
       if properties["class"] not in ["actor", "event", "attribute", "condition"]:
          raise ValueError("class property is not allowed types of event, attribute, condition")
-   if "metadata" in properties:
- #     logging.debug(type(properties["metadata"]))
-      # metadata needs to be a dictionary string
-      if type(properties["metadata"]) is not dict:
+
+   if properties["class"] is "attribute":
+      # For attributes, label needs to be a dictionary string
+      if type(properties["label"]) is not dict:
          try:
-            properties["metadata"] = json.loads(properties["metadata"])
+            properties["label"] = json.loads(properties["label"])
          except:
-            logger.error("metadata of type %s not parsable" % type(properties["metadata"]))
-            raise ValueError("metadata property not parsable")
-      # pull one type:value pair out of metadata, convert to string, & save back to metadata
-      for key in properties["metadata"]:
+            # Going to help out a bit and just save the label as a dictionary
+            properties["label"] = {"description": properties["label"]}
+#            logger.error("Attribute label of type %s not parsable" % type(properties["label"]))
+#            raise ValueError("Attribute label property not parsable")
+      # pull one type:value pair out of the label dictionary, convert to string, & save back to the label
+      for key in properties["label"]:
          tmp = {}
-         tmp[key] = properties["metadata"][key]
-      properties["metadata"] = json.dumps(tmp)
+         tmp[key] = properties["label"][key]
+      properties["label"] = json.dumps(tmp)
    # check event for required property 'start'
    if "start" in properties:
        dt = parser.parse(properties["start"])
@@ -357,20 +353,18 @@ def validateNodeProperties(properties):
          properties["comment"] = str(properties["comment"])
       except:
          raise ValueError("comment could not be parsed into string")
-   # A basic validation of the cpt to make sure it can be 'stringed'
+   # Load the CPT as a dictionary, validate it, and turn it back to a string
    if "cpt" in properties:
       try:
-         # if it's a dictionary, parse it as json into a string
-         if type(properties["cpt"]) is dict:
-            properties["cpt"] = json.dumps(properties["cpt"])
-         # if it's a string, send it on
-         elif type(properties["cpt"]) is str:
-            pass
-         # if it's something else, turn it into a string and hope for the best
+         # Make sure CPT is a dictionary
+         if type(properties["cpt"]) is not dict:
+            cptObj = json.loads(properties["cpt"])
          else:
-            properties["cpt"] = str(properties["cpt"])
+            cptObj = properties["cpt"]
+         cptObj = validateCPT(cptObj) # Will raise error if CPT has no nodeid
+         properties["cpt"] = str(properties["cpt"])
       except:
-         raise ValueError("CPT cannot be turned into a string")
+         raise ValueError("CPT did not parse and validate")
    return properties
 
 
@@ -457,7 +451,7 @@ def validateCPT(graph_db, cpt):
    validated = True
    # make sure there's an nodeid row matching the node
    if "nodeid" not in cpt:
-      raise "cpt %s has no nodeID and cannot be validated" % cpt
+      raise ValueError("cpt %s has no nodeID and cannot be validated" % cpt)
    n = graph_db.get_node(cpt["nodeid"])
    parents = n.get_related_nodes(direction=-1)
    numRows = 2**len(parents)

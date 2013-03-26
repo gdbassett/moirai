@@ -144,9 +144,9 @@ class MyTopicService:
          i = int(topicUriSuffix)
          # check that the topic is allowed (only using '1' right now)
          if i in self.allowedTopicIds:
-            # Add 'and "DCES_VERSION" in event' to below to check that message
-            #   is actually a DCES message, (in case other graph messase are used)
-            if type(event) == dict:
+            # Checkes that event is a Dict, has a dces version, and ...
+            #  the version is supported.
+            if type(event) == dict and "dces_version" in event and event["dces_version"] in [0.3]:
                # New call to new Moirai Module
                updatedEvent = moiraiGraphUpdate.addDcesEvent(graph_db, event)
                print "ok, publishing updated event %s" % updatedEvent
