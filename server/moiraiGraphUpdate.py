@@ -453,15 +453,87 @@ def fixEdges(event):
 # DOES: validates it against the CPT format.
 # DOES: If the CPT doesn't validate, a default CPT is returned
 # RETURNS: The CPT
-def validateCPT(cpt):
-   # Make sure there are 2^parents rows
+def validateCPT(graph_db, cpt):
+   validated = True
    # make sure there's an nodeid row matching the node
+   if "nodeid" not in cpt:
+      raise "cpt has no nodeID and cannot be validated"
+   n = graph_db.get_node(cpt["nodeid"])
+   parents = n.get_related_nodes(direction=-1)
+   numRows = 2**len(parents)
    # make sure there's an index row with all the parents in it
-   # make sure the last two nodes are between 0 and 1 inclusive
-   # make sure the rest of the rows represent the binary equiavlent of their row ID
+   if validated = True:
+      if "index" in cpt:
+         for parent in parents:
+            if parent.id not in "index":
+               logging.debug("Validation failed: parent %s not in index" % parent.id)
+               validated = False
+         if (len("index") - 2) != len(parents):
+            logging.debug("Validation failed: parent not in index")
+            validated = False
+      else:
+         logging.debug("Validation failed: index not in cpt")
+         validated = False
+   if validated == True:
+      # Make sure there are 2^parents rows
+      for i in range(0,numRows):
+         if str(i) not in cpt:
+            logging.debug("Validation failed: row %s not in cpt" % i)
+            validated = False
+         else:
+            # make sure the last two nodes are between 0 and 1 inclusive
+            if (cpt[str(i)][-1] < 0) or (cpt[str(i)[-1] > 1):
+               logging.debug("Validation failed: False not a percentage")
+               validated = False
+            if (cpt[str(i)][-2] < 0) or (cpt[str(i)[-2] > 1):
+               logging.debug("Validation failed: True not a percentage")
+               validated = False
+            # make sure the rest of the rows represent the binary equiavlent of their row ID
+            k = [int(x) for x in list('{0:0b}'.format(j))]
+            for l in range(0,(len(parents) - len(k)):
+               k.insert(0,0)
+            if k != cpt[str(j)][:-2]:
+               logging.debug("Validation failed: binary %s (%S) did not match row %s, %s" % (j, k, j, cpt[str(j)][:-2]))
+               validated = False
    # if anything doesn't validate
-   ## Create a CPT where nodes w/ all attributes and at least one condition/event are true
-   ## all other rows are false
+   if validated == False
+      # Start from scratch
+      cpt = {}
+      # Add nodeid property
+      cpt["nodeid"] = n.id
+      # Add index property
+      cpt["index"] = []
+      for parent in parents:
+         cpt["index"].append(parent.id)
+      cpt["index"].append(True)
+      cpt["index"].append(False)
+      # Get the attribute/anchor parents & event/condition parents
+      aParents = []
+      ecParents = []
+      for c in range(0,len(cpt["index"])-2):
+         p = graph_db.get_node(cpt["index"][c])
+         if p["class"] in ["attribute", "actor"]:
+            aParents.append(c)
+         else: #implicitly events/conditions
+            ecParents.append(c)
+      # Now iterate over the rows to create them
+      for i in range(0, numRows):
+         ## Create a CPT where nodes w/ all attributes and at least one condition/event are true
+         cpt[str(i)] = [int(x) for x in list('{0:0b}'.format(j))]
+         for l in range(0,(len(parents) - len(k)):
+            cpt[str(i)].insert(0,0)         
+         # WHAT: If the sum of all of the attribute nodes isn't the length of the nodes (i.e. each is 1 as in all are true)
+         # WHAT: And the sum of ecParents is at least 1, (meaning at least one is true)
+         # WHAT: then...
+         if (sum([cpt[str(i)][x] for x in aParents]) = len(aParents)) and (sum([cpt[str(i)][x] for x in ecParents]) >= 1):
+            # Append a 'true' to the string
+            cpt[str(i)].append(1) # Append the true
+            cpt[str(i)].append(0) # Append the false
+         ## all other rows are false
+         else:
+            cpt[str(i)].append(0) # Append the true
+            cpt[str(i)].append(1) # Append the false         
+   logging.debug("Returning CPT %s from the validate function" % cpt)
    return cpt # TODO: return the validated or default cpt
 
 # TODO: Add 'fixCPTs' function -> fixes parents 
@@ -498,7 +570,7 @@ def fixCPTs(graph_db, event):
          logging.debug("Parents out is %s." % parents)
          cptObj["index"] = parents
          # validate the CPT
-         cptObj = validateCPT(cptObj)
+         cptObj = validateCPT(graph_db, cptObj)
          # Turn the CPT back into a string and put it back in the event
          event[node]["cpt"] = json.dumps(cptObj)
          # Put it in the database
@@ -507,7 +579,7 @@ def fixCPTs(graph_db, event):
       except Exception as inst:
          logging.error("CPT did not parse into object with error\r\n %s\r\n Returning default CPT" % inst)
          # if it failed, just send back an default CPT by sending validateCPT a blankCPT
-         event[node]["cpt"] = json.dumps(validateCPT({})) 
+         event[node]["cpt"] = json.dumps(validateCPT(graph_db, {})) 
    logging.debug("Returning Event %s." % event)
    return event # TODO: return updated event, not original
 
