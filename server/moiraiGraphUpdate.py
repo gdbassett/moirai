@@ -462,7 +462,7 @@ def validateCPT(graph_db, cpt):
    parents = n.get_related_nodes(direction=-1)
    numRows = 2**len(parents)
    # make sure there's an index row with all the parents in it
-   if validated = True:
+   if validated == True:
       if "index" in cpt:
          for parent in parents:
             if parent.id not in "index":
@@ -482,21 +482,21 @@ def validateCPT(graph_db, cpt):
             validated = False
          else:
             # make sure the last two nodes are between 0 and 1 inclusive
-            if (cpt[str(i)][-1] < 0) or (cpt[str(i)[-1] > 1):
+            if (cpt[str(i)][-1] < 0) or (cpt[str(i)][-1] > 1):
                logging.debug("Validation failed: False not a percentage")
                validated = False
-            if (cpt[str(i)][-2] < 0) or (cpt[str(i)[-2] > 1):
+            if (cpt[str(i)][-2] < 0) or (cpt[str(i)][-2] > 1):
                logging.debug("Validation failed: True not a percentage")
                validated = False
             # make sure the rest of the rows represent the binary equiavlent of their row ID
             k = [int(x) for x in list('{0:0b}'.format(j))]
-            for l in range(0,(len(parents) - len(k)):
+            for l in range(0,len(parents) - len(k)):
                k.insert(0,0)
             if k != cpt[str(j)][:-2]:
                logging.debug("Validation failed: binary %s (%S) did not match row %s, %s" % (j, k, j, cpt[str(j)][:-2]))
                validated = False
    # if anything doesn't validate
-   if validated == False
+   if validated == False:
       # Start from scratch
       cpt = {}
       # Add nodeid property
@@ -520,12 +520,12 @@ def validateCPT(graph_db, cpt):
       for i in range(0, numRows):
          ## Create a CPT where nodes w/ all attributes and at least one condition/event are true
          cpt[str(i)] = [int(x) for x in list('{0:0b}'.format(j))]
-         for l in range(0,(len(parents) - len(k)):
+         for l in range(0,len(parents) - len(k)):
             cpt[str(i)].insert(0,0)         
          # WHAT: If the sum of all of the attribute nodes isn't the length of the nodes (i.e. each is 1 as in all are true)
          # WHAT: And the sum of ecParents is at least 1, (meaning at least one is true)
          # WHAT: then...
-         if (sum([cpt[str(i)][x] for x in aParents]) = len(aParents)) and (sum([cpt[str(i)][x] for x in ecParents]) >= 1):
+         if (sum([cpt[str(i)][x] for x in aParents]) == len(aParents)) and (sum([cpt[str(i)][x] for x in ecParents]) >= 1):
             # Append a 'true' to the string
             cpt[str(i)].append(1) # Append the true
             cpt[str(i)].append(0) # Append the false
