@@ -501,6 +501,8 @@ def validateCPT(graph_db, cpt):
       cpt = {}
       # Add nodeid property
       cpt["nodeid"] = n.id
+      # Add 'reviewed' property & set false
+      cpt["reviewed"] = False
       # Add index property
       cpt["index"] = []
       for parent in parents:
@@ -579,7 +581,7 @@ def fixCPTs(graph_db, event):
       except Exception as inst:
          logging.error("CPT did not parse into object with error\r\n %s\r\n Returning default CPT" % inst)
          # if it failed, just send back an default CPT by sending validateCPT a blankCPT
-         event[node]["cpt"] = json.dumps(validateCPT(graph_db, {})) 
+         event[node]["cpt"] = json.dumps(validateCPT(graph_db, {"nodeid":node})) 
    logging.debug("Returning Event %s." % event)
    return event # TODO: return updated event, not original
 
