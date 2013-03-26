@@ -14,3 +14,29 @@ host: <host the client is serving the RPC on>
 port: <port number the client is serving the RPC on>
 URI: <URI at which the RPC can be reached>
 help: <a string, URL, or other location where information on the RPC function, arguements, and return can be found.>
+
+Graph Standard:
+-all property names must be lower case
+-Nodes must have the following properties:
+--"class": May be "actor", "event", "condition", "attribute"
+--"cpt": must be a JSON string in the format defined at http://infosecanalytics.blogspot.com/2013/03/conditional-probability-tables-in-json.html
+--"start": The time the node is created. Time should be in ISO 8601 combined date and time format (e.g. 2013-03-14T16:57Z)
+--"ID": Assigned by database.  
+-Nodes of "class" "actor", "event, or "condition" must have property "label" containing a string holding a narrative describing the actor, event, or condition
+-Nodes of "class" "attribute" must have a property "metadata" containing a JSON formatted string with a single "{'type':'value'} pair.  Value is the name of the attribute and value the value.
+-Nodes of "class" "attribute" with property "label" will have said property ignored.  If a narrative is appropriate for the attribute, it should be stored in the metadata property.
+-Nodes of any class MAY have property "comments" providing additional narrative on the node
+-Nodes of any class MAY have property "finish" providing a finish time for the node. Time should be in ISO 8601 combined date and time format (e.g. 2013-03-14T16:57Z)
+-Edges must have the following properties:
+--"source": the id of the source node
+--"target": the id of the target node
+--"id": id assigned by the database
+--"relationship": value of "influence" if "source" property "class" is "attribute" and "target" property "class" is "event" or "condition"
+                  value of "leads to" if "source" property "class" is "event", "threat", or "condition" and "target" property "class" is "actor", "event", or "condition"
+                  value of "described by" if "source" property "class" is "event", "condition", or "actor" and "target" property "class" is "attribute"
+                  value of "described by" if both "source" and "target" property "class" are "attribute"
+--"directed": value of "True"
+-Edges may have a property "confidence" with an integer value from 0 to 100 representing the percent confidence
+-Edges must be directed
+-Nodes and Edges may have additional properties, however they will not be validated and may be ignored by the attack graph.
+-Nodes and Edges missing values may still be accepted if the value can be filled in.
