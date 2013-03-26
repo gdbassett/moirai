@@ -457,7 +457,7 @@ def validateCPT(graph_db, cpt):
    validated = True
    # make sure there's an nodeid row matching the node
    if "nodeid" not in cpt:
-      raise "cpt has no nodeID and cannot be validated"
+      raise "cpt %s has no nodeID and cannot be validated" % cpt
    n = graph_db.get_node(cpt["nodeid"])
    parents = n.get_related_nodes(direction=-1)
    numRows = 2**len(parents)
@@ -465,35 +465,35 @@ def validateCPT(graph_db, cpt):
    if validated == True:
       if "index" in cpt:
          for parent in parents:
-            if parent.id not in "index":
-               logging.debug("Validation failed: parent %s not in index" % parent.id)
+            if parent.id not in cpt["index"]:
+               logging.debug("Validation failed for %s: parent %s not in index" % (cpt, parent.id))
                validated = False
-         if (len("index") - 2) != len(parents):
-            logging.debug("Validation failed: parent not in index")
+         if (len(cpt["index"]) - 2) != len(parents):
+            logging.debug("Validation failed for %s: index not correct length" % cpt)
             validated = False
       else:
-         logging.debug("Validation failed: index not in cpt")
+         logging.debug("Validation failed for %s: index not in cpt" % cpt)
          validated = False
    if validated == True:
       # Make sure there are 2^parents rows
       for i in range(0,numRows):
          if str(i) not in cpt:
-            logging.debug("Validation failed: row %s not in cpt" % i)
+            logging.debug("Validation failed for %s: row %s not in cpt" % (cpt, i))
             validated = False
          else:
             # make sure the last two nodes are between 0 and 1 inclusive
             if (cpt[str(i)][-1] < 0) or (cpt[str(i)][-1] > 1):
-               logging.debug("Validation failed: False not a percentage")
+               logging.debug("Validation failed for %s: False not a percentage" % cpt)
                validated = False
             if (cpt[str(i)][-2] < 0) or (cpt[str(i)][-2] > 1):
-               logging.debug("Validation failed: True not a percentage")
+               logging.debug("Validation failed for %s: True not a percentage" % cpt)
                validated = False
             # make sure the rest of the rows represent the binary equiavlent of their row ID
-            k = [int(x) for x in list('{0:0b}'.format(j))]
+            k = [int(x) for x in list('{0:0b}'.format(i))]
             for l in range(0,len(parents) - len(k)):
                k.insert(0,0)
-            if k != cpt[str(j)][:-2]:
-               logging.debug("Validation failed: binary %s (%S) did not match row %s, %s" % (j, k, j, cpt[str(j)][:-2]))
+            if k != cpt[str(i)][:-2]:
+               logging.debug("Validation failed for %s: binary %s (%s) did not match row %s, %s" % (cpt, i, k, i, cpt[str(i)][:-2]))
                validated = False
    # if anything doesn't validate
    if validated == False:
@@ -521,8 +521,8 @@ def validateCPT(graph_db, cpt):
       # Now iterate over the rows to create them
       for i in range(0, numRows):
          ## Create a CPT where nodes w/ all attributes and at least one condition/event are true
-         cpt[str(i)] = [int(x) for x in list('{0:0b}'.format(j))]
-         for l in range(0,len(parents) - len(k)):
+         cpt[str(i)] = [int(x) for x in list('{0:0b}'.format(i))]
+         for l in range(0,len(parents) - len(cpt[str(i)])):
             cpt[str(i)].insert(0,0)         
          # WHAT: If the sum of all of the attribute nodes isn't the length of the nodes (i.e. each is 1 as in all are true)
          # WHAT: And the sum of ecParents is at least 1, (meaning at least one is true)
