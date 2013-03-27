@@ -35,20 +35,27 @@ Moirai depends on thepy2neo, autobahn, and python-dateutil python modules.  Addi
 
 ##Getting started:
 1. Download and install py2neo, autobahn, and neo4j
-```bash
+```
 pip install py2neo
 easy-install autobahn
 pip install python-dateutil
 ```
 (instructions for installing neo4j can be found at http://www.neo4j.org)
 2. clone the repository: 
+```
 git clone https://github.com/gdbassett/moirai
+```
 3. edit the config file to ensure the values are correct, (primarily server ports and hosts)
+```
 nano ~/moirai/server/moirai_server.cfg
+```
 4. assuming neo4j hasn't been started, start it
+```
 neo4j start (from the neo4j bin directory unless installed as a linux package)
+```
 5. start moirai.  Most config options can be overwritten at the command line
-python ~/moirai/server/moirai_server.py
+```
+python ~/moirai/server/moiraiServer.py
+```
 (note, once fully implemented, the moirai_gui client can be served by enabling the simple python webserver with the "-w" option to moirai_server.py.)
 6. Test functionality by running some of the python test clients.  Clients are stored in ~/clients.
-
