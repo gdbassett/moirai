@@ -51,8 +51,9 @@ nano ~/moirai/server/moirai_server.cfg
 ```
 4. assuming neo4j hasn't been started, start it
 ```
-neo4j start (from the neo4j bin directory unless installed as a linux package)
+neo4j start
 ```
+(from the neo4j bin directory unless installed as a linux package)
 5. start moirai.  Most config options can be overwritten at the command line
 ```
 python ~/moirai/server/moiraiServer.py
