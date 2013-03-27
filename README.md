@@ -36,9 +36,7 @@ Moirai depends on thepy2neo, autobahn, and python-dateutil python modules.  Addi
 ##Getting started:
 1. Download and install py2neo, autobahn, and neo4j
 ```
-pip install py2neo
-easy-install autobahn
-pip install python-dateutil
+pip install py2neo autobahn python-dateutil
 ```
 (instructions for installing neo4j can be found at http://www.neo4j.org)
 2. clone the repository: 
