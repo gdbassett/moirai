@@ -2,7 +2,7 @@
 ======
 
 ##Summary:
-Moirai is an architecture to manage an information security posture in the form of an attack graph. It may be used for offensive tasks such as penetration testing or defensive tasks such as risk assessment and management, intrusion detection, intelligence gathering and application, and response execution.
+Moirai is a patent pending, open source licensed, architecture to manage an information security posture in the form of an attack graph. It may be used for offensive tasks such as penetration testing or defensive tasks such as risk assessment and management, intrusion detection, intelligence gathering and application, and response execution.
 
 Moirai is the metasploit of defense.  It is a central framework with which all other defensive tools can communicate.
 
