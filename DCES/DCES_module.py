@@ -1,7 +1,7 @@
 '''
  AUTHOR: Gabriel Bassett
  DATE: 07-15-2013
- DEPENDANCIES: networkx
+ DEPENDANCIES: networkx, python-dateutil
  Copyright 2013 Gabriel Bassett
 
  LICENSE:
@@ -25,11 +25,20 @@
 
 '''
 
-
+# Imported to handle JSON objects (including DCES objects)
 import json
-import
+# Imported to allow storage of the construct as a graph
+#  this serves as an intermediate stage for the DCES object
 import networkx as nx
+# Imported to handle XML objects
 import xml.dom.minidom
+# Imported to generate unique IDs
+import uuid
+# Imported to allow time parsing
+from dateutil import parser
+import datetime
+
+
 
 ## STATIC VARIABLES
 
@@ -43,6 +52,7 @@ import xml.dom.minidom
 
 
 ## EXECUTION
+
 def json_to_DCES(strIn):
     """(str) -> str
 
@@ -62,11 +72,35 @@ def list_to_DCES(listIn, columnNames):
     Takes a database record as a listobject and returns a DCES compliant
      JSON object as a str.
 
+    Note: Function only checks for times with a column name of "time" or
+          "Time" an dother
+
     """
     # Create the basic DCES structure
     dictOut = {"dces_version":"0.3", "ae":{}, "an":{}}
+    # Create a time
+    if "time" in columnNames:
+        time = parser.parse(listIn[columNames.index("time")]).strftime("%Y-%m-%d %H:%M:%S %z")
+    elif "Time" in columnNames:
+        time = listIn[columNames.index("Time")]
+    else:
+        time
+    # Create a graph to store the construct
+    g = nx.DiGraph()
+    # Create a unique ID for the constructID node
+    CID = uuid.uuid4()
+    CID_CPT = json.dumps({"nodeid":CID,"index":[true,false],"0":[1,0]}
     # Create a base constructID node
-    # CPT = {"index":["J",true,false],"0":[0,1,0],"1":[1,1,0]}}
+    g.add_node(
+        CID,
+        {"cpt": CID_CPT,
+         "start":
+         }
+         )
+
+    # Establish properties for nodes
+    # create the node CPT
+    nodeCPT = json.dumps({"index":["ID",True,False],"0":[0,1,0],"1":[1,1,0]})
     # if any item is a time
     ##convert it and use as a time
     # else
