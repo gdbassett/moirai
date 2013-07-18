@@ -64,7 +64,7 @@ def list_to_DCES(listIn, columnNames):
 
     """
     # Create the basic DCES structure
-    strOut = {"dces_version":"0.3", "ae":{}, "an":{}}
+    dictOut = {"dces_version":"0.3", "ae":{}, "an":{}}
     # Create a base constructID node
     # CPT = {"index":["J",true,false],"0":[0,1,0],"1":[1,1,0]}}
     # if any item is a time
@@ -73,11 +73,15 @@ def list_to_DCES(listIn, columnNames):
     ##use current time
     # for each item in the string
     ## make it a node with:
-    ### Time
-    ### TODO: keep completing
+    ### an attribute: "Label":"{'<value from columnName>':<value>
+    ### an attribute: time: <the event time or current time if no event time>
+    ### an attribute: class: attribute
+    ### an attribute: cpt:CPT
+    ### an attribute: nodeid:<randomly assigned ID string>
+    ### an edge from teh attribute node node to the constructID node
 
      
-    return strOut
+    return json.dumps(dictOut)
 
 
 def xml_to_DCES(strIn):
