@@ -72,49 +72,85 @@ def list_to_DCES(listIn, columnNames):
     Takes a database record as a listobject and returns a DCES compliant
      JSON object as a str.
 
-    Note: Function only checks for times with a column name of "time" or
-          "Time" an dother
+    Note1: Function checks for times with a column name of "startTime", "time", 
+        or "Time" in the columnNames.  If it isn't found, current time is used.
+
+    Note2: Functions will check for endTime.  If it finds it, nodes will be
+           populated.
 
     """
+    # Check that the 2 lists are the same thing
+    if len(listIn) != len(columnNames):
+        raise ValueError("The lengths of the two supplied lists must match")
+    
     # Create the basic DCES structure
     dictOut = {"dces_version":"0.3", "ae":{}, "an":{}}
-    # Create a time
-    if "time" in columnNames:
-        time = parser.parse(listIn[columNames.index("time")]).strftime("%Y-%m-%d %H:%M:%S %z")
+    # Create a start time
+    if "startTime" in columnNames:
+        startTime = parser.parse(listIn[columNames.index("startTime")]).strftime("%Y-%m-%d %H:%M:%S %z")
+    elif "time" in columnNames:
+        startTime = parser.parse(listIn[columNames.index("time")]).strftime("%Y-%m-%d %H:%M:%S %z")
     elif "Time" in columnNames:
-        time = listIn[columNames.index("Time")]
+        startTime = parser.parse(listIn[columNames.index("Time")]).strftime("%Y-%m-%d %H:%M:%S %z")
+    elif "Start" in columnNames:
+        startTime = parser.parse(listIn[columNames.index("Start")]).strftime("%Y-%m-%d %H:%M:%S %z")
+    elif "start" in columnNames:
+        startTime = parser.parse(listIn[columNames.index("start")]).strftime("%Y-%m-%d %H:%M:%S %z")
     else:
-        time
+        startTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
+    # Create an end time if possible
+    if "endTime" in columnNames:
+        endTime = parser.parse(listIn[columNames.index("endTime")]).strftime("%Y-%m-%d %H:%M:%S %z")
+    if "end" in columnNames:
+        endTime = parser.parse(listIn[columNames.index("end")]).strftime("%Y-%m-%d %H:%M:%S %z")
+    if "End" in columnNames:
+        endTime = parser.parse(listIn[columNames.index("End")]).strftime("%Y-%m-%d %H:%M:%S %z")
+    else:
+        endTime = ""
     # Create a graph to store the construct
     g = nx.DiGraph()
     # Create a unique ID for the constructID node
     CID = uuid.uuid4()
-    CID_CPT = json.dumps({"nodeid":CID,"index":[true,false],"0":[1,0]}
+    CID_CPT = {"nodeid":CID}
     # Create a base constructID node
-    g.add_node(
-        CID,
+    dictOut["an"][CID] = 
         {"cpt": CID_CPT,
-         "start":
+         "start": startTime,
+         "label":{"id":CID}
          }
-         )
-
+    if endTime:
+        dictOut["an"][CID]["end"]: endTime
+        
     # Establish properties for nodes
     # create the node CPT
-    nodeCPT = json.dumps({"index":["ID",True,False],"0":[0,1,0],"1":[1,1,0]})
-    # if any item is a time
-    ##convert it and use as a time
-    # else
-    ##use current time
+    nodeCPT = {"nodeid":"ID","index":[true,false],"0":[1,0]}
     # for each item in the string
-    ## make it a node with:
-    ### an attribute: "Label":"{'<value from columnName>':<value>
-    ### an attribute: time: <the event time or current time if no event time>
-    ### an attribute: class: attribute
-    ### an attribute: cpt:CPT
-    ### an attribute: nodeid:<randomly assigned ID string>
-    ### an edge from teh attribute node node to the constructID node
+    for i in range(len(columnNames)):
+        ## if it's not one of the labels we used
+        if columnNames[i] not in ["time", "Time", "startTime", "endTime", "End", "end", "Start", "start"]:
+            nodeID = uuid.uuid4()
+            ## make it a node with:
+            nodeCPT["nodeid"] = nodeID
+            dictOut["an"][nodeID] = 
+                {"cpt": nodeCPT
+                 "start": startTime,
+                 "label":{columnNames[i]:listIn[i]}
+                 }
+            ### an edge from the attribute node node to the constructID node
+            edgeID = uuid.uuid4()
+            dictOut["ae"][edgeID] = {
+                "source":nodeID,
+                "target":CID,
+                "directed":True,
+                "relationship":"described by",
+                "start":startTime
+                }
+            # If an end time exists, store it on the node and edge
+            if endTime:
+                dictOut["an"][nodeID]["end"] = endTime
+                dictOut["ae"][edgeID]["end"] = endTime
 
-     
+    # Return the DCES dictionary as a string
     return json.dumps(dictOut)
 
 
