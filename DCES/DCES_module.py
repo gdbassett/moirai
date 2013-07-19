@@ -114,9 +114,10 @@ def list_to_DCES(listIn, columnNames):
     CID_CPT = {"nodeid":CID}
     # Create a base constructID node
     dictOut["an"][CID] = 
-        {"cpt": CID_CPT,
+        {"cpt": loads(CID_CPT),
+         "class":"attribute",
          "start": startTime,
-         "label":{"id":CID}
+         "label":json.loads({"id":CID})
          }
     if endTime:
         dictOut["an"][CID]["end"]: endTime
@@ -132,9 +133,10 @@ def list_to_DCES(listIn, columnNames):
             ## make it a node with:
             nodeCPT["nodeid"] = nodeID
             dictOut["an"][nodeID] = 
-                {"cpt": nodeCPT
+                {"cpt": loads(nodeCPT),
+                 "class":"attribute",
                  "start": startTime,
-                 "label":{columnNames[i]:listIn[i]}
+                 "label":loads({columnNames[i]:listIn[i]})
                  }
             ### an edge from the attribute node node to the constructID node
             edgeID = uuid.uuid4()
@@ -204,9 +206,24 @@ def DCES_to_list(strIn):
     jsonIn = json.loads(strIn)
     # Create the empty output list
     listOut = []
-    # Process Input Here
-    return listOut
+    columnNames = []
+    # Find the constructID node
+    for node in jsonIn["an"]:
+        if "id" in loads(jsonIn[node]["label"]):
+            CID = node
+            break
 
+    # Add cross-node attributes first from constructID node
+    # Add the start time
+    listOut.append(jsonIn["an"][CID]["start"])
+    columnNames.append("start")
+    # If there's an end time, include it
+    
+    # If there's a comment, include it
+
+    # Parse all the nodes, and if they are an attribute, import their label
+
+    return listOut, columnNames
 
 
 def DCES_to_xml(strIn):
