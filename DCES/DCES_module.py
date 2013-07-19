@@ -218,10 +218,22 @@ def DCES_to_list(strIn):
     listOut.append(jsonIn["an"][CID]["start"])
     columnNames.append("start")
     # If there's an end time, include it
-    
+    if "end" in jsonIn["an"][CID]
+        listOut.append(jsonIn["an"][CID]["end"])
+        columnNames.append("end")
     # If there's a comment, include it
-
+    if "comment" in jsonIn["an"][CID]
+        listOut.append(jsonIn["an"][CID]["comment"])
+        columnNames.append("comment")
     # Parse all the nodes, and if they are an attribute, import their label
+    for node in jsonIn["an"]:
+        label = json.loads(jsonIn["an"][node]["label"])
+        # Import one key per node
+        for key in label:
+            listOut.append(label[key])
+            columnNames.append(key)
+            break
+        
 
     return listOut, columnNames
 
