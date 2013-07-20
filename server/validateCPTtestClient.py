@@ -1,9 +1,39 @@
-"""
-NOTE: To use this validation script, you must have a node with two valid parents
-      already in the graph.  Set the nodeid variable to the DBid of that node
-      and adjust the parent1 and parent2 variables to the parents prior to
-      running.
-"""
+'''
+ AUTHOR: Gabriel Bassett
+ DATE: 07-15-2013
+ DEPENDANCIES: py2neo
+ Copyright 2013 Gabriel Bassett
+
+ LICENSE:
+ This program is free software:  you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 or the LIcense, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public LIcense for more dtails.
+
+ You should have received a copy of the GNU General Public License
+ along with theis program.  If not, see <http://www.gnu.org/licenses/>.
+
+ ACKNOWLEDGEMENTS:
+ 
+
+ DESCRIPTION:
+ Script to validate a CPT in a graph
+
+ TODO:
+
+
+ NOTE:
+ To use this validation script, you must have a node with two valid parents
+ already in the graph.  Set the nodeid variable to the DBid of that node
+ and adjust the parent1 and parent2 variables to the parents prior to
+ running.
+
+'''
 
 import moiraiGraphUpdate as moirai
 

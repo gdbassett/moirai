@@ -18,10 +18,19 @@
  You should have received a copy of the GNU General Public License
  along with theis program.  If not, see <http://www.gnu.org/licenses/>.
 
+ ACKNOWLEDGEMENTS:
+
+
  DESCRIPTION:
  The DCES Module packs and unpacks records in the DCES format.
  The DCES Module will support database records as lists, XML records,
  networkx, and JSON records.
+
+ TODO:
+
+
+ NOTES
+ 
 
 '''
 
