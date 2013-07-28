@@ -53,6 +53,33 @@ import datetime
 
 
 ## EXECUTION
+def parse_dict(dictIn):
+    """(dict) -> dict, str
+
+    Takes a JSON record and returns a DCES graph and the root node of that graph
+     as a string.
+
+    """
+
+    # DCESDict = {"an":{}, "ae":{}}
+    for key in dictIn:
+        ## if dict
+        if type(dictIn[key]) = dict:
+            ### create branching node
+            rootId = str(uuid.uuid4())
+            rootNode = {rootID:{"cpt": json.dumps({"nodeid":CID}),
+                                "class":"attribute",
+                                "start": "",
+                                "label":json.dumps({"key":key})}}
+            # START HERE
+    ### parse dict
+    ### add edge from returned node to created branch node
+    ## else
+    ### build node dict
+    # If any nodes in dict don't had a time, search for a time and add it
+    #   Starting with root node
+    # return DCESDict
+
 
 def json_to_DCES(strIn):
     """(str) -> str
@@ -62,9 +89,14 @@ def json_to_DCES(strIn):
 
     """
     # Create the basic DCES structure
-    strOut = {"dces_version":"0.3", "ae":{}, "an":{}}
-    # Process Input Here
-    return strOut
+    dictOut = {"dces_version":"0.3", "ae":{}, "an":{}}
+    # Create construct ID
+    # Create template node string
+    # Convert json string to dict
+    nodes = parse_dict(json.loads(strIn)
+    # for each node that has no time, add the time
+    
+    return json.dumps(dictOut)
 
 
 def list_to_DCES(listIn, columnNames):
@@ -117,7 +149,7 @@ def list_to_DCES(listIn, columnNames):
     # Create a graph to store the construct
     g = nx.DiGraph()
     # Create a unique ID for the constructID node
-    CID = uuid.uuid4()
+    CID = str(uuid.uuid4())
     CID_CPT = {"nodeid":CID}
     # Create a base constructID node
     dictOut["an"][CID] = 
@@ -136,7 +168,7 @@ def list_to_DCES(listIn, columnNames):
     for i in range(len(columnNames)):
         ## if it's not one of the labels we used
         if columnNames[i] not in ["time", "Time", "startTime", "endTime", "End", "end", "Start", "start"]:
-            nodeID = uuid.uuid4()
+            nodeID = str(uuid.uuid4())
             ## make it a node with:
             nodeCPT["nodeid"] = nodeID
             dictOut["an"][nodeID] = 
@@ -146,7 +178,7 @@ def list_to_DCES(listIn, columnNames):
                  "label":loads({columnNames[i]:listIn[i]})
                  }
             ### an edge from the attribute node node to the constructID node
-            edgeID = uuid.uuid4()
+            edgeID = str(uuid.uuid4())
             dictOut["ae"][edgeID] = {
                 "source":nodeID,
                 "target":CID,
@@ -182,13 +214,13 @@ def networkx_to_DCES(graphIn):
 
     """
     # Create the basic DCES structure
-    strOut = {"dces_version":"0.3", "ae":{}, "an":{}}
+    dictOut = {"dces_version":"0.3", "ae":{}, "an":{}}
     # create default CPT
     nodeCPT = {"nodeid":"ID","index":[true,false],"0":[1,0]}
     blankCPT = {"nodeid":"ID"}
     # TODO:  Create construct ID node here
-    CID = uuid.uuid4()
-    strOut["an"][CID] = {
+    CID = str(uuid.uuid4())
+    dictOut["an"][CID] = {
         "cpt": json.dumps(blankCPT).replace("ID",CID),
          "class":"attribute",
          "start": startTime,
@@ -240,13 +272,13 @@ def networkx_to_DCES(graphIn):
             # if it is, keep 1 value from it
         # Create core node
         if not labelNode:
-            strOut["an"][nKey] = {'label':graphIn.node[nKey]['label']}
+            dictOut["an"][nKey] = {'label':graphIn.node[nKey]['label']}
         else
-            strOut["an"][nKey] = {'label':json.dumps({'id':nKey})}
-        strOut["an"][nKey]['start'] = start
-        strOut["an"][nKey]['end'] = end
+            dictOut["an"][nKey] = {'label':json.dumps({'id':nKey})}
+        dictOut["an"][nKey]['start'] = start
+        dictOut["an"][nKey]['end'] = end
         if comment:
-            strOut["an"][nKey]['comment'] = comment
+            dictOut["an"][nKey]['comment'] = comment
             
         # For all node attributes
         for a in graphIn.node[nKey]:
@@ -262,19 +294,19 @@ def networkx_to_DCES(graphIn):
             else
                 # if it's a node we are going to create
                 ## Create an attribute node for that attribute
-                key = uuid.uuid4()
-                strOut["an"][key] = {'label': loads({a: graphInnode[nKey][a]}),
+                key = str(uuid.uuid4())
+                dictOut["an"][key] = {'label': loads({a: graphInnode[nKey][a]}),
                                      "class":"attribute",
                                      "cpt": json.dumps(nodeCPT).replace("ID",nKey)
                                     }
                 ## Populate start, commment, and end
-                strOut["an"][key]['start'] = start
+                dictOut["an"][key]['start'] = start
                 if end:
-                    strOut["an"][key]["end"] = end
+                    dictOut["an"][key]["end"] = end
                 if comment:
-                    strOut["an"][key]["comment"] = comment
+                    dictOut["an"][key]["comment"] = comment
                 ## Create an edge linking the attribute to the core node
-                strOut["an"][uuid.uuid4()] = {
+                dictOut["an"][str(uuid.uuid4())] = {
                     "source":nKey,
                     "target":key,
                     "directed":True,
@@ -282,7 +314,7 @@ def networkx_to_DCES(graphIn):
                     "start":start
                     }
                 ## Create an edge linking the attribute to the constructID
-                strOut["an"][uuid.uuid4()] = {
+                dictOut["ae"][str(uuid.uuid4())] = {
                     "source":key,
                     "target":CID,
                     "directed":True,
@@ -299,19 +331,17 @@ def networkx_to_DCES(graphIn):
         # Get the attribute dict from the edge
         attr = g[source][target]
         # id
-        EID = uuid.uuid4()
+        EID = str(uuid.uuid4())
         
-        strOut["an"][EID] = {
+        dictOut["ae"][EID] = {
             "source":source,
             "target":target,
             "directed":True,
             "relationship":"described by",
             "start":start
             }
-        # combine the edge attribute dictionary
-        #TODO
                 
-    return strOut
+    return json.dumps(dictOut)
 
 
 def DCES_to_json(strIn):
