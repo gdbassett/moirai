@@ -3,6 +3,7 @@
  DATE: 07-15-2013
  DEPENDANCIES: networkx, python-dateutil
  Copyright 2013 Gabriel Bassett
+ Version: DCES 0.3
 
  LICENSE:
  This program is free software:  you can redistribute it and/or modify
@@ -85,28 +86,34 @@ def list_to_DCES(listIn, columnNames):
     
     # Create the basic DCES structure
     dictOut = {"dces_version":"0.3", "ae":{}, "an":{}}
-    # Create a start time
-    if "startTime" in columnNames:
-        startTime = parser.parse(listIn[columNames.index("startTime")]).strftime("%Y-%m-%d %H:%M:%S %z")
-    elif "time" in columnNames:
-        startTime = parser.parse(listIn[columNames.index("time")]).strftime("%Y-%m-%d %H:%M:%S %z")
-    elif "Time" in columnNames:
-        startTime = parser.parse(listIn[columNames.index("Time")]).strftime("%Y-%m-%d %H:%M:%S %z")
-    elif "Start" in columnNames:
-        startTime = parser.parse(listIn[columNames.index("Start")]).strftime("%Y-%m-%d %H:%M:%S %z")
-    elif "start" in columnNames:
-        startTime = parser.parse(listIn[columNames.index("start")]).strftime("%Y-%m-%d %H:%M:%S %z")
-    else:
-        startTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
+    try:
+        # Create a start time
+        if "startTime" in columnNames:
+            startTime = parser.parse(listIn[columNames.index("startTime")]).strftime("%Y-%m-%d %H:%M:%S %z")
+        elif "time" in columnNames:
+            startTime = parser.parse(listIn[columNames.index("time")]).strftime("%Y-%m-%d %H:%M:%S %z")
+        elif "Time" in columnNames:
+            startTime = parser.parse(listIn[columNames.index("Time")]).strftime("%Y-%m-%d %H:%M:%S %z")
+        elif "Start" in columnNames:
+            startTime = parser.parse(listIn[columNames.index("Start")]).strftime("%Y-%m-%d %H:%M:%S %z")
+        elif "start" in columnNames:
+            startTime = parser.parse(listIn[columNames.index("start")]).strftime("%Y-%m-%d %H:%M:%S %z")
+        else:
+            startTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
+    except ValueError:
+            startTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")        
     # Create an end time if possible
-    if "endTime" in columnNames:
-        endTime = parser.parse(listIn[columNames.index("endTime")]).strftime("%Y-%m-%d %H:%M:%S %z")
-    if "end" in columnNames:
-        endTime = parser.parse(listIn[columNames.index("end")]).strftime("%Y-%m-%d %H:%M:%S %z")
-    if "End" in columnNames:
-        endTime = parser.parse(listIn[columNames.index("End")]).strftime("%Y-%m-%d %H:%M:%S %z")
-    else:
-        endTime = ""
+    try:
+        if "endTime" in columnNames:
+            endTime = parser.parse(listIn[columNames.index("endTime")]).strftime("%Y-%m-%d %H:%M:%S %z")
+        if "end" in columnNames:
+            endTime = parser.parse(listIn[columNames.index("end")]).strftime("%Y-%m-%d %H:%M:%S %z")
+        if "End" in columnNames:
+            endTime = parser.parse(listIn[columNames.index("End")]).strftime("%Y-%m-%d %H:%M:%S %z")
+        else:
+            endTime = None
+    except ValueError:
+        endTime = None
     # Create a graph to store the construct
     g = nx.DiGraph()
     # Create a unique ID for the constructID node
@@ -114,10 +121,10 @@ def list_to_DCES(listIn, columnNames):
     CID_CPT = {"nodeid":CID}
     # Create a base constructID node
     dictOut["an"][CID] = 
-        {"cpt": loads(CID_CPT),
+        {"cpt": json.dumps(CID_CPT),
          "class":"attribute",
          "start": startTime,
-         "label":json.loads({"id":CID})
+         "label":json.dumps({"id":CID})
          }
     if endTime:
         dictOut["an"][CID]["end"]: endTime
@@ -133,7 +140,7 @@ def list_to_DCES(listIn, columnNames):
             ## make it a node with:
             nodeCPT["nodeid"] = nodeID
             dictOut["an"][nodeID] = 
-                {"cpt": loads(nodeCPT),
+                {"cpt": loads(nodeCPT).replace("ID",nodeID),
                  "class":"attribute",
                  "start": startTime,
                  "label":loads({columnNames[i]:listIn[i]})
@@ -176,7 +183,134 @@ def networkx_to_DCES(graphIn):
     """
     # Create the basic DCES structure
     strOut = {"dces_version":"0.3", "ae":{}, "an":{}}
-    # Process Input Here
+    # create default CPT
+    nodeCPT = {"nodeid":"ID","index":[true,false],"0":[1,0]}
+    blankCPT = {"nodeid":"ID"}
+    # TODO:  Create construct ID node here
+    CID = uuid.uuid4()
+    strOut["an"][CID] = {
+        "cpt": json.dumps(blankCPT).replace("ID",CID),
+         "class":"attribute",
+         "start": startTime,
+         "label":json.dumps({"id":CID})
+         }= {
+                    
+                    }
+    # Iterate over all nodes
+    for nKey in graphIn.node:
+        # Going to have to parse out attributes from the node into new nodes
+        # Pull Start, End, Comment and Label values and store them
+        # See if graph has a real start time in it
+        if 'start' in graphIn.node[nKey]:
+            try:
+                startNode = False
+                startTime = parser.parse(graphIn.node[nKey]["start"]).strftime("%Y-%m-%d %H:%M:%S %z")
+            except ValueError:
+                startNode = True
+                startTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
+
+        else:
+            startNode = True
+            startTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
+        # See if graph has a real end time in it
+        if 'end' in graphIn.node[nKey]:
+            try:
+                endNode = False
+                endTime = parser.parse(graphIn.node[nKey]["end"]).strftime("%Y-%m-%d %H:%M:%S %z")
+            except ValueError:
+                endNode = True
+                endTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
+
+        else:
+            endNode = True
+            endTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
+        # get comments if any
+        if 'comment' in graphIn.node[nKey]:
+            comment = graphIn.node[nKey]['comment']
+        else
+            comment = None
+        # try and import the label, parsing it if necessary
+        if 'label' in graphIn.node[nKey]:
+            # check if it's a dictionary
+            if type('label') == dict:
+                labelNode = False
+            else:
+                labelNode = True
+                
+            # if it is, keep 1 value from it
+        # Create core node
+        if not labelNode:
+            strOut["an"][nKey] = {'label':graphIn.node[nKey]['label']}
+        else
+            strOut["an"][nKey] = {'label':json.dumps({'id':nKey})}
+        strOut["an"][nKey]['start'] = start
+        strOut["an"][nKey]['end'] = end
+        if comment:
+            strOut["an"][nKey]['comment'] = comment
+            
+        # For all node attributes
+        for a in graphIn.node[nKey]:
+            # If it's a node we're not going to create, pass
+            if a = 'start' and not startNode:
+                pass
+            elif a = 'comment':
+                pass
+            elif a = 'end' and not endNode:
+                pass
+            elif a = 'label' and not labelNode:
+                pass
+            else
+                # if it's a node we are going to create
+                ## Create an attribute node for that attribute
+                key = uuid.uuid4()
+                strOut["an"][key] = {'label': loads({a: graphInnode[nKey][a]}),
+                                     "class":"attribute",
+                                     "cpt": json.dumps(nodeCPT).replace("ID",nKey)
+                                    }
+                ## Populate start, commment, and end
+                strOut["an"][key]['start'] = start
+                if end:
+                    strOut["an"][key]["end"] = end
+                if comment:
+                    strOut["an"][key]["comment"] = comment
+                ## Create an edge linking the attribute to the core node
+                strOut["an"][uuid.uuid4()] = {
+                    "source":nKey,
+                    "target":key,
+                    "directed":True,
+                    "relationship":"described by",
+                    "start":start
+                    }
+                ## Create an edge linking the attribute to the constructID
+                strOut["an"][uuid.uuid4()] = {
+                    "source":key,
+                    "target":CID,
+                    "directed":True,
+                    "relationship":"described by",
+                    "start":start
+                    }                    
+
+    # Parse all the edges
+    for e in graphIn.edges():
+        # Get the source from the edge
+        source = e[0]
+        # get the target from the edge
+        target = e[1]
+        # Get the attribute dict from the edge
+        attr = g[source][target]
+        # id
+        EID = uuid.uuid4()
+        
+        strOut["an"][EID] = {
+            "source":source,
+            "target":target,
+            "directed":True,
+            "relationship":"described by",
+            "start":start
+            }
+        # combine the edge attribute dictionary
+        #TODO
+                
     return strOut
 
 
