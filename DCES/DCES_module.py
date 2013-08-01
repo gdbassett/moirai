@@ -24,6 +24,10 @@
  The DCES Module will support database records as lists, XML records,
  networkx, and JSON records.
 
+ TODO:
+ -Capture End times in records
+ -Capture Start times for JSON objects
+
 '''
 
 # Imported to handle JSON objects (including DCES objects)
@@ -53,32 +57,47 @@ import datetime
 
 
 ## EXECUTION
-def parse_dict(dictIn):
-    """(dict) -> dict, str
+def parse_dict(keyIn, objIn):
+    """(dict) -> dict, list
 
-    Takes a JSON record and returns a DCES graph and the root node of that graph
-     as a string.
+    Takes a JSON record and returns a dictionary of nodes and edges and a string
+      of the nodeId it was called on
 
     """
-
-    # DCESDict = {"an":{}, "ae":{}}
-    for key in dictIn:
-        ## if dict
-        if type(dictIn[key]) = dict:
-            ### create branching node
-            rootId = str(uuid.uuid4())
-            rootNode = {rootID:{"cpt": json.dumps({"nodeid":CID}),
-                                "class":"attribute",
-                                "start": "",
-                                "label":json.dumps({"key":key})}}
-            # START HERE
-    ### parse dict
-    ### add edge from returned node to created branch node
-    ## else
-    ### build node dict
+    ## Create a dictionary to capture the output
+    nodeDict = {"an":{}, "ae":{}}
+    ## if it's another dictionary...
+    if type(objIn) = dict:
+        ### create branching node
+        rootId = str(uuid.uuid4())
+        nodeDict["an"][rootId] = {"cpt": json.dumps({"nodeid":rootId}),
+                            "class":"attribute",
+                            "start": startTime,
+                            "label":json.dumps({"key":keyIn})}}
+        ### Recurse into the dictionary
+        for key in dictIn:
+            # get the nodes in that dictionary recursively
+            children, childId = parse_dict(key, dictIn[key])
+            ### add edge from returned node to created branch node
+            dictOut["ae"][EID] = {
+                "source":rootId,
+                "target":childId,
+                "directed":True,
+                "relationship":"described by",
+                "start":startTime
+                }
+    else:
+        ### This is a leaf, just build a node for it        
+        ### build node dict
+        rootId = str(uuid.uuid4())
+        nodeDict["an"][str(uuid.uuid4())] = {
+            "cpt": json.dumps({"nodeid":CID}),
+            "class":"attribute",
+            "start": startTime,
+            "label":json.dumps({key:objIn}) }
     # If any nodes in dict don't had a time, search for a time and add it
     #   Starting with root node
-    # return DCESDict
+    return nodeDict, rootId
 
 
 def json_to_DCES(strIn):
@@ -121,15 +140,15 @@ def list_to_DCES(listIn, columnNames):
     try:
         # Create a start time
         if "startTime" in columnNames:
-            startTime = parser.parse(listIn[columNames.index("startTime")]).strftime("%Y-%m-%d %H:%M:%S %z")
+            startTime = parser.parse(listIn[columNames.index("startTime")]).strftime("%Y-%m-%dT%H:%M:%SZ")
         elif "time" in columnNames:
-            startTime = parser.parse(listIn[columNames.index("time")]).strftime("%Y-%m-%d %H:%M:%S %z")
+            startTime = parser.parse(listIn[columNames.index("time")]).strftime("%Y-%m-%dT%H:%M:%SZ")
         elif "Time" in columnNames:
-            startTime = parser.parse(listIn[columNames.index("Time")]).strftime("%Y-%m-%d %H:%M:%S %z")
+            startTime = parser.parse(listIn[columNames.index("Time")]).strftime("%Y-%m-%dT%H:%M:%SZ")
         elif "Start" in columnNames:
-            startTime = parser.parse(listIn[columNames.index("Start")]).strftime("%Y-%m-%d %H:%M:%S %z")
+            startTime = parser.parse(listIn[columNames.index("Start")]).strftime("%Y-%m-%dT%H:%M:%SZ")
         elif "start" in columnNames:
-            startTime = parser.parse(listIn[columNames.index("start")]).strftime("%Y-%m-%d %H:%M:%S %z")
+            startTime = parser.parse(listIn[columNames.index("start")]).strftime("%Y-%m-%dT%H:%M:%SZ")
         else:
             startTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
     except ValueError:
