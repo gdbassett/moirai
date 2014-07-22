@@ -171,12 +171,12 @@ def list_to_DCES(listIn, columnNames):
     CID = str(uuid.uuid4())
     CID_CPT = {"nodeid":CID}
     # Create a base constructID node
-    dictOut["an"][CID] = 
-        {"cpt": json.dumps(CID_CPT),
+    dictOut["an"][CID] = {
+         "cpt": json.dumps(CID_CPT),
          "class":"attribute",
          "start": startTime,
          "label":json.dumps({"id":CID})
-         }
+    }
     if endTime:
         dictOut["an"][CID]["end"]: endTime
         
