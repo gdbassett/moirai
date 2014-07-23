@@ -53,7 +53,7 @@ parser = argparse.ArgumentParser(description='This script processes a graph.')
 args = parser.parse_args()
 
 ## EXECUTION
-def atomic_to_node(a, key = str(uuid.uuid4()), start_time=datetime.datetime.now()):
+def atomic_to_node(a, key = None, start_time=datetime.datetime.now()):
     """
 
     :param b: A atomic variable (bool, string, number, or null) to be converted to a node
@@ -61,17 +61,17 @@ def atomic_to_node(a, key = str(uuid.uuid4()), start_time=datetime.datetime.now(
     :return: A tuple of an nx graph containing the single node and the id string of that node
     """
     g = nx.DiGraph()
-    id = key
-    g.add_node(id, {
+    r = key
+    g.add_node(r, {
         'class': 'attribute',
         'attribute': key,
         key: a,
         "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
     })
-    return g, id
+    return g, r
 
 
-def list_to_graph(l, key = None, col_names = [], start_time=datetime.datetime.now()):
+def list_to_graph(l, key = None, col_names = list(), start_time=datetime.datetime.now()):
     """
 
     :param l: a list to turn into a graph
@@ -88,32 +88,32 @@ def list_to_graph(l, key = None, col_names = [], start_time=datetime.datetime.no
     g = nx.DiGraph()
 
     # Create the root node
-    id = key
-    g.add_node(id, {
+    r = key
+    g.add_node(r, {
         'class': 'attribute',
         'attribute': key,
-        key: a,
+        key: None,
         "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
     })
 
     # Add list
     for i in range(len(l)):
         # Create the node
-        g.add_node(col_names[i], {
+        g.add_node("col_{0}".format(col_names[i]), {
             'class': 'attribute',
-            'attribute': col_names[i],
-            key: l[i],
+            'attribute': "col_{0}".format(col_names[i]),
+            "col_{0}".format(col_names[i]): l[i],
             "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         })
 
         # Connect it to the graph
-        g.add_edge(id, col_names[i], {
+        g.add_edge(r, "col_{0}".format(col_names[i]), {
             "relationship":"described_by",
             "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         })
 
     # return the graph and root node
-    return g, id
+    return g, r
 
 
 def dict_to_graph(d, key = None, start_time=datetime.datetime.now()):
@@ -128,14 +128,12 @@ def dict_to_graph(d, key = None, start_time=datetime.datetime.now()):
     # initialize the graph
     g = nx.DiGraph()
 
-    # Create the root node
-    id = key
-    g.add_node(id, {
-        'class': 'attribute',
-        'attribute': key,
-        key: a,
-        "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-    })
+    # Create the root node id
+    if key == None:
+        r = str(uuid.uuid4())
+    else:
+        r = key
+
 
     for key in d.keys():
         if type(d[key]) is dict:
@@ -145,12 +143,26 @@ def dict_to_graph(d, key = None, start_time=datetime.datetime.now()):
         elif type(d[key]) in (str, int, bool, None):
             sub_graph, sub_root_id = atomic_to_node(d[key], key, start_time)
         else:
-            return g, id
-        g = merge_graphs(g, sub_graph)
-        # Even though lower nodes are merged, still need to create the edge from the parent to child
-        g.add_edge(id, sub_root_id)
+            return g, r
 
-    return g, id
+        # add the root node to the subgraph.  (facilitates merging)
+        sub_graph.add_node(r, {
+        'class': 'attribute',
+        'attribute': key,
+        key: None,
+        "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        })
+        sub_graph.add_edge(r, sub_root_id)
+
+        # Merge the sub_graph into the main graph
+        g = merge_graphs(g, sub_graph)
+
+        g = nx.relabel_nodes(g, {'g-' + r: r, 'h-' + r: r})
+#        g = nx.relabel_nodes(g, {'h-' + r: r})
+
+        print "{0} - {1}".format(r, g.edges()) # DEBUG
+
+    return g, r
 
 def merge_graphs(g, h):
     """
@@ -165,15 +177,18 @@ def merge_graphs(g, h):
 
     # Look through graph for duplicates
     for n1 in h.nodes(data=True):
-        for n2 in g.nodes(data=True):
-            if n1[1] == n2[1]:
-                # if there is a duplicate based on attributes, merge the nodes
-                nx.relabel_nodes(G, {n1[0]:n2[0]})
+        # The None:None node is likely to be a root node in a nested dictionary so don't merge it
+        if not (None in n1[1] and n1[1][None] == None):
+            for n2 in g.nodes(data=True):
+                if n1[1] == n2[1]:
+                    # if there is a duplicate based on attributes, merge the nodes
+                    G = nx.relabel_nodes(G, {"h-" + n1[0]:"g-" + n2[0]})
+                    print "matched, {0} and {1}".format(n1[0], n2[0])
 
     return G
 
 def main():
-
+    pass
 
 if __name__ == "__main__":
     main()
