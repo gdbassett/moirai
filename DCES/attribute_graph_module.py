@@ -71,7 +71,7 @@ def atomic_to_node(a, key = str(uuid.uuid4()), start_time=datetime.datetime.now(
     return g, id
 
 
-def list_to_graph(l, key = str(uuid.uuid4()), col_names = [], start_time=datetime.datetime.now()):
+def list_to_graph(l, key = None, col_names = [], start_time=datetime.datetime.now()):
     """
 
     :param l: a list to turn into a graph
@@ -116,7 +116,7 @@ def list_to_graph(l, key = str(uuid.uuid4()), col_names = [], start_time=datetim
     return g, id
 
 
-def dict_to_graph(d, key = str(uuid.uuid4()), start_time=datetime.datetime.now()):
+def dict_to_graph(d, key = None, start_time=datetime.datetime.now()):
     """
 
     :param d: a dictionary to turn into a graph
@@ -152,16 +152,25 @@ def dict_to_graph(d, key = str(uuid.uuid4()), start_time=datetime.datetime.now()
 
     return g, id
 
-def merge_graphs(g1, g2):
+def merge_graphs(g, h):
     """
 
-    :param g1: a networkx graph
-    :param g2: a networkx graph
+    :param g: a networkx graph
+    :param h: a networkx graph (preferably the smaller graph being added to g)
     :return: returns the union of the graphs per the CAGS schema
     """
-    TODO: Will need to figure out how to get the 2 graphs to merge
-    pass
 
+    # create  a union graph
+    G = nx.union(g, h, rename=('g-', 'h-'))
+
+    # Look through graph for duplicates
+    for n1 in h.nodes(data=True):
+        for n2 in g.nodes(data=True):
+            if n1[1] == n2[1]:
+                # if there is a duplicate based on attributes, merge the nodes
+                nx.relabel_nodes(G, {n1[0]:n2[0]})
+
+    return G
 
 def main():
 
