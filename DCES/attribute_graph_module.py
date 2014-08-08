@@ -271,7 +271,7 @@ def dict_to_graph_2(d, key = "", start_time=datetime.datetime.now()): # alternat
 
                 # enqueue individual list items
                 for k in range(len(node[2])):
-                    queue.append((n, col_names[i], node[2][i]))
+                    queue.append((n, col_names[k], node[2][k]))
 
         except Exception as e:
             print queue
@@ -279,6 +279,75 @@ def dict_to_graph_2(d, key = "", start_time=datetime.datetime.now()): # alternat
             raise e
 
     return g, r
+
+
+def dict_to_graph_3(d, key = "", start_time=datetime.datetime.now()): # alternate implementation, top-down
+    """ Another alternate way of processing dictionary with no intermediary nodes
+
+    :param d: a dictionary to turn into a graph
+    :param key: Optional key to server as the root of the graph. (Defaults to random UUID)
+    :param start_time: datetime of the time to associate with the node.  (defaults to current time)
+    :return: A tuple of an nx graph representing the dictionary and the id string of that node
+    """
+    g = nx.DiGraph()
+    r = ""  # Was 'None' instead of "" but that doesn't work in graphs
+
+    # create the nested keys, values to parse
+    queue = [(key, d)] # Queue of dictionaries to explore
+
+    try:
+        # create dictionary record root node
+        if key == "":
+            n = str(uuid.uuid4())
+        else:
+            n = str(key) + str(uuid.uuid4())
+        g.add_node(n, {
+            "class": "attribute",
+            "attribute": "record",
+            "record": n
+        })
+
+        # process dictionary as a queue
+        while len(queue) > 0:
+            node = queue.pop(0)
+
+            if type(node[1]) == dict:
+                queue + [(node[0], x) for x in node[1].values()]
+
+            elif type(node[1]) in (str, int, bool, None):
+                if node[1] == None:
+                    node[1] == "" # Was 'None' instead of "" but that doesn't work in graphs
+
+                # find nodes that match the attributes and have no children
+                m = [x[0] for x in g.nodes(data=True) if (node[0] in x[1] and x[1][node[0]] == node[1] and len(g.successors(x[0])) == 0)]
+
+                if len(m) > 0: # a duplicate exists so link to it instead
+                    nid = m[0]
+                else: # no duplicate exists.  create the node
+                    nid = uuid.uuid4()
+                    g.add_node(nid, {
+                        'class': 'attribute',
+                        'attribute': node[0],
+                        node[0]: node[1],
+                        "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    })
+
+                # link to parent
+                    g.add_edge(n, nid, {
+                        "relationship":"described_by",
+                        "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    })
+
+            elif type(node[1]) == list:
+                # enqueue individual list items
+                for k in range(len(node[1])):
+                    queue.append((key + "_col" + str(k+1), node[1][k]))
+
+
+    except Exception as e:
+        print queue
+        print node
+        raise e
 
 def merge_graphs(g, h, attributes = list(), merge_parents = False):
     """
