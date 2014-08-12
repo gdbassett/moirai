@@ -42,7 +42,6 @@ import json
 # Imported to generate unique IDs
 import uuid
 # Imported to allow time parsing
-from dateutil import parser
 import datetime
 
 
@@ -54,30 +53,32 @@ parser.add_argument('--out', help='output graph file location', default=GRAPH_OU
 # <add arguments here>
 args = parser.parse_args()
 
+
 ## EXECUTION
  # Was 'None' instead of "" but that doesn't work in graphs
-def atomic_to_node(a, key = "", start_time=datetime.datetime.now()):
+def atomic_to_node(a, key="", start_time=datetime.datetime.now()):
     """
 
     :param b: A atomic variable (bool, string, number, or null) to be converted to a node
     :param key: Optional key to be associated with the value
     :return: A tuple of an nx graph containing the single node and the id string of that node
     """
-    if a == None:
-        a == "" # Was 'None' instead of "" but that doesn't work in graphs
+
+    if a is None:
+        a = ""  # Was 'None' instead of "" but that doesn't work in graphs
 
     g = nx.DiGraph()
     r = key
-    g.add_node(r, {
-        'class': 'attribute',
-        'attribute': key,
-        key: a,
-        "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-    })
+    g.add_node(r, {'class': 'attribute',
+                   'attribute': key,
+                   key: a,
+                   "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                  })
     return g, r
 
+
  # Was 'None' instead of "" but that doesn't work in graphs
-def list_to_graph(l, key = "", col_names = list(), start_time=datetime.datetime.now()):
+def list_to_graph(l, key="", col_names=list(), start_time=datetime.datetime.now()):
     """
 
     :param l: a list to turn into a graph
@@ -95,34 +96,32 @@ def list_to_graph(l, key = "", col_names = list(), start_time=datetime.datetime.
 
     # Create the root node
     r = key
-    g.add_node(r, {
-        'class': 'attribute',
-        'attribute': key,
-        key: "", # Was 'None' instead of "" but that doesn't work in graphs
-        "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-    })
+    g.add_node(r, {'class': 'attribute',
+                   'attribute': key,
+                   key: "",  # Was 'None' instead of "" but that doesn't work in graphs
+                   "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                  })
 
     # Add list
     for i in range(len(l)):
         # Create the node
-        g.add_node("col_{0}".format(col_names[i]), {
-            'class': 'attribute',
-            'attribute': "col_{0}".format(col_names[i]),
-            "col_{0}".format(col_names[i]): l[i],
-            "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-        })
+        g.add_node("col_{0}".format(col_names[i]), {'class': 'attribute',
+                                                    'attribute': "col_{0}".format(col_names[i]),
+                                                    "col_{0}".format(col_names[i]): l[i],
+                                                    "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                                   })
 
         # Connect it to the graph
-        g.add_edge(r, "col_{0}".format(col_names[i]), {
-            "relationship":"described_by",
-            "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-        })
+        g.add_edge(r, "col_{0}".format(col_names[i]), {"relationship": "described_by",
+                                                       "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                                      })
 
     # return the graph and root node
     return g, r
 
+
  # Was 'None' instead of "" but that doesn't work in graphs
-def dict_to_graph(d, key = "", start_time=datetime.datetime.now()): # bottom up implementation
+def dict_to_graph(d, key="", start_time=datetime.datetime.now()): # bottom up implementation
     """
 
     :param d: a dictionary to turn into a graph
@@ -152,16 +151,14 @@ def dict_to_graph(d, key = "", start_time=datetime.datetime.now()): # bottom up 
             return g, r
 
         # add the root node to the subgraph.  (facilitates merging)
-        sub_graph.add_node(r, {
-        'class': 'attribute',
-        'attribute': key,
-        key: "", # Was 'None' instead of "" but that doesn't work in graphs
-        "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-        })
-        sub_graph.add_edge(r, sub_root_id, {
-            "relationship":"described_by",
-            "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-        })
+        sub_graph.add_node(r, {'class': 'attribute',
+                               'attribute': key,
+                               key: "",  # Was 'None' instead of "" but that doesn't work in graphs
+                               "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                              })
+        sub_graph.add_edge(r, sub_root_id, {"relationship": "described_by",
+                                            "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                           })
 
         # Merge the sub_graph into the main graph
         g = merge_graphs(g, sub_graph)
@@ -174,7 +171,7 @@ def dict_to_graph(d, key = "", start_time=datetime.datetime.now()): # bottom up 
     return g, r
 
 
-def dict_to_graph_2(d, key = "", start_time=datetime.datetime.now()): # alternate implementation, top-down
+def dict_to_graph_2(d, key="", start_time=datetime.datetime.now()): # alternate implementation, top-down
     """
 
     :param d: a dictionary to turn into a graph
@@ -186,17 +183,18 @@ def dict_to_graph_2(d, key = "", start_time=datetime.datetime.now()): # alternat
     r = ""  # Was 'None' instead of "" but that doesn't work in graphs
 
     # create the list of nodes to parse into the graph in the form (parent, key, node)
-    queue = [("", key, d)] # Was 'None' instead of "" but that doesn't work in graphs
+    queue = [(None, key, d)] # Was 'None' instead of "" but that doesn't work in graphs
+
+    g.add_node(key, {'class': 'attribute',
+                     'attribute': key,
+                     key: ""
+                    })
 
     while len(queue) > 0:
-        node = queue.pop(0)
+        node = list(queue.pop(0))
         # Create the node id
         try:
-            if node[1] == "":
-                n = str(uuid.uuid4())
-            else:
-                n = str(node[1]) + str(uuid.uuid4())
-
+            n = str(node[1]) + str(uuid.uuid4())
 
             if type(node[2]) == dict:
                 # Enqueue children
@@ -204,25 +202,24 @@ def dict_to_graph_2(d, key = "", start_time=datetime.datetime.now()): # alternat
                     queue.append((n, k, node[2][k]))
 
                 # Create the node
-                g.add_node(n, {
-                'class': 'attribute',
-                'attribute': node[1],
-                node[1]: "", # Was 'None' instead of "" but that doesn't work in graphs
-                "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-                })
+                g.add_node(n, {'class': 'attribute',
+                               'attribute': node[1],
+                               node[1]: "",  # Was 'None' instead of "" but that doesn't work in graphs
+                               "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                              })
 
                 # link to parent
-                if node[0] is not "": # Was 'None' instead of "" but that doesn't work in graphs
+                if node[0] is not None:  # Was 'None' instead of "" but that doesn't work in graphs
                     g.add_edge(node[0], n, {
-                        "relationship":"described_by",
+                        "relationship": "described_by",
                         "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
                     })
                 else:
                     r = n
 
             elif type(node[2]) in (str, int, bool, None):
-                if node[2] == None:
-                    node[2] == "" # Was 'None' instead of "" but that doesn't work in graphs
+                if node[2] is None:
+                    node[2] = ""  # Was 'None' instead of "" but that doesn't work in graphs
 
                 # find nodes that match the attributes and have no children
                 m = [x[0] for x in g.nodes(data=True) if (node[1] in x[1] and x[1][node[1]] == node[2] and len(g.successors(x[0])) == 0)]
@@ -238,7 +235,7 @@ def dict_to_graph_2(d, key = "", start_time=datetime.datetime.now()): # alternat
                     })
 
                 # link to parent
-                if node[0] is not "": # Was 'None' instead of "" but that doesn't work in graphs
+                if node[0] is not None:
                     g.add_edge(node[0], n, {
                 "relationship":"described_by",
                 "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -256,7 +253,7 @@ def dict_to_graph_2(d, key = "", start_time=datetime.datetime.now()): # alternat
                 })
 
                 # link to parent
-                if node[0] is not "": # Was 'None' instead of "" but that doesn't work in graphs
+                if node[0] is not None: # Was 'None' instead of "" but that doesn't work in graphs
                     g.add_edge(node[0], n, {
                         "relationship":"described_by",
                         "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -264,14 +261,9 @@ def dict_to_graph_2(d, key = "", start_time=datetime.datetime.now()): # alternat
                 else:
                     r = n
 
-                # create column names
-                col_names = list()
-                for i in range((len(node[2]) - len(col_names))):
-                    col_names.append(i+1)
-
                 # enqueue individual list items
                 for k in range(len(node[2])):
-                    queue.append((n, col_names[k], node[2][k]))
+                    queue.append((n, str(key) + "_col" + str(k+1), node[2][k]))
 
         except Exception as e:
             print queue
@@ -290,17 +282,13 @@ def dict_to_graph_3(d, key = "", start_time=datetime.datetime.now()): # alternat
     :return: A tuple of an nx graph representing the dictionary and the id string of that node
     """
     g = nx.DiGraph()
-    r = ""  # Was 'None' instead of "" but that doesn't work in graphs
 
     # create the nested keys, values to parse
     queue = [(key, d)] # Queue of dictionaries to explore
 
     try:
         # create dictionary record root node
-        if key == "":
-            n = str(uuid.uuid4())
-        else:
-            n = str(key) + str(uuid.uuid4())
+        n = str(key) + str(uuid.uuid4())
         g.add_node(n, {
             "class": "attribute",
             "attribute": "record",
@@ -312,14 +300,22 @@ def dict_to_graph_3(d, key = "", start_time=datetime.datetime.now()): # alternat
             node = queue.pop(0)
 
             if type(node[1]) == dict:
-                queue + [(node[0], x) for x in node[1].values()]
+                queue = queue + [(node[0], x) for x in node[1].values()]
+
+            elif type(node[1]) == list:
+                # enqueue individual list items
+                for k in range(len(node[1])):
+                    queue.append((str(key) + "_col" + str(k+1), node[1][k]))
 
             elif type(node[1]) in (str, int, bool, None):
                 if node[1] == None:
-                    node[1] == "" # Was 'None' instead of "" but that doesn't work in graphs
+                    node[1] = ""  # Was 'None' instead of "" but that doesn't work in graphs
 
                 # find nodes that match the attributes and have no children
-                m = [x[0] for x in g.nodes(data=True) if (node[0] in x[1] and x[1][node[0]] == node[1] and len(g.successors(x[0])) == 0)]
+                m = []
+                for x in g.nodes(data=True):
+                    if node[0] in x[1] and x[1][node[0]] == node[1] and len(g.successors(x[0])) == 0:
+                        m.append(x[0])
 
                 if len(m) > 0: # a duplicate exists so link to it instead
                     nid = m[0]
@@ -338,16 +334,12 @@ def dict_to_graph_3(d, key = "", start_time=datetime.datetime.now()): # alternat
                         "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
                     })
 
-            elif type(node[1]) == list:
-                # enqueue individual list items
-                for k in range(len(node[1])):
-                    queue.append((key + "_col" + str(k+1), node[1][k]))
-
-
     except Exception as e:
         print queue
         print node
         raise e
+
+    return g, n
 
 def merge_graphs(g, h, attributes = list(), merge_parents = False):
     """
@@ -358,6 +350,8 @@ def merge_graphs(g, h, attributes = list(), merge_parents = False):
     :param merge_parents: If True, nodes that have children will still be merged.  Default is 'False'
     :return: returns the union of the graphs per the CAGS schema
     """
+    # TODO: ADD the ability to pass in a set of edges which will also be created manually. (link graph roots, etc)
+    #       Alternately, users could be expected to create edges by retrieving nodes by attribute
 
     # create  a union graph
     G = nx.union(g, h, rename=('g-', 'h-'))
@@ -366,7 +360,7 @@ def merge_graphs(g, h, attributes = list(), merge_parents = False):
     for n1 in h.nodes(data=True):
         # The None:None node is likely to be a root node in a nested dictionary so don't merge it
         if not ("" in n1[1] and n1[1][""] == "") and \
-                (merge_parents == True or len(g.successors(n1[0]) == 0)): # Was 'None' instead of "" but that doesn't work in graphs
+                (merge_parents == True or len(g.successors(n1[0])) == 0):  # Was 'None' instead of "" but that doesn't work in graphs
             for n2 in g.nodes(data=True):
                 # Match nodes
                 match = True
